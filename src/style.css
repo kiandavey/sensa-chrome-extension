@@ -1,3 +1,53 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+/* * Use the 'class' method for dark mode in Tailwind. Config file update:
+* module.exports = { darkMode: 'class', ... }
+*/
+.dark {
+  color-scheme: dark;
+}
+
+/* -- Dashboard Slide View Transitions (Horizontal) -- */
+/* Fade in from the right */
+.dashboard-slide-visual-to-auditory-enter {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.dashboard-slide-visual-to-auditory-enter-active {
+  transform: translateX(0%);
+  opacity: 1;
+  transition: transform 300ms ease-out, opacity 300ms ease-out;
+}
+/* Fade out to the left */
+.dashboard-slide-visual-to-auditory-exit {
+  transform: translateX(0%);
+  opacity: 1;
+}
+.dashboard-slide-visual-to-auditory-exit-active {
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 300ms ease-in, opacity 300ms ease-in;
+}
+
+/* Fade in from the left */
+.dashboard-slide-auditory-to-visual-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+.dashboard-slide-auditory-to-visual-enter-active {
+  transform: translateX(0%);
+  opacity: 1;
+  transition: transform 300ms ease-out, opacity 300ms ease-out;
+}
+/* Fade out to the right */
+.dashboard-slide-auditory-to-visual-exit {
+  transform: translateX(0%);
+  opacity: 1;
+}
+.dashboard-slide-auditory-to-visual-exit-active {
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 300ms ease-in, opacity 300ms ease-in;
+}

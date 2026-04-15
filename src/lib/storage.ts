@@ -1,26 +1,28 @@
-// 1. The exact shape of your JSON Database
+// 1. Define the shape of your JSON Database profile
 export interface SensaUserProfile {
   globalSettings: {
     hasSeenWelcome: boolean;
     activeMode: "visual" | "auditory" | null;
+    theme: "light" | "dark"; // New persistent setting
   };
   visualState: {
     ttsEnabled: boolean;
     readingSpeed: number;
-    // We will add more Phase 2 settings here later!
+    // ... Phase 2 settings pending
   };
   auditoryState: {
     captionsEnabled: boolean;
     targetLanguage: string;
-    // We will add more Phase 3 settings here later!
+    // ... Phase 3 settings pending
   };
 }
 
-// 2. The Default State (What a brand new user gets)
+// 2. Define the exact default profile for new users
 export const DEFAULT_PROFILE: SensaUserProfile = {
   globalSettings: {
     hasSeenWelcome: false,
     activeMode: null,
+    theme: "light", // Default is light mode
   },
   visualState: {
     ttsEnabled: false,
