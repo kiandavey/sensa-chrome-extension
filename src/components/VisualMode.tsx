@@ -1,7 +1,31 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export default function VisualMode() {
   const [isListening, setIsListening] = useState(false)
+
+  // --- THE TWO-WAY BRIDGE ---
+  useEffect(() => {
+    // 1. Check status the exact millisecond the popup opens
+    chrome.storage.local.get(["sensa_visual_active"], (res) => {
+      setIsListening(!!res.sensa_visual_active)
+    })
+
+    // 2. Listen for the web page telling us it closed
+    const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+      if (changes.sensa_visual_active !== undefined) {
+        setIsListening(changes.sensa_visual_active.newValue)
+      }
+    }
+
+    chrome.storage.onChanged.addListener(handleStorageChange)
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+  }, [])
+
+  // Send signal to web page
+  const handleToggle = () => {
+    const newState = !isListening
+    chrome.storage.local.set({ sensa_visual_active: newState })
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 w-full h-full">
@@ -15,10 +39,10 @@ export default function VisualMode() {
           <div className="w-0.5 h-4 bg-current rounded-full"></div>
         </div>
 
-        {/* Microphone Button (Fixed Chromium Border Bug using Rings) */}
+        {/* Microphone Button */}
         <button
           style={{ WebkitTapHighlightColor: 'transparent' }}
-          onClick={() => setIsListening(!isListening)}
+          onClick={handleToggle}
           className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 relative group outline-none focus:outline-none focus:ring-0 transform-gpu
             ${isListening 
               ? "bg-[#3B82F6] shadow-[0_0_35px_rgba(59,130,246,0.6)] scale-105 ring-0" 

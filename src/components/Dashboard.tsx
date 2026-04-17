@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import sensaLogo from "data-base64:../../assets/sensa-logo.png"
 import VisualMode from "./VisualMode"
 import AuditoryMode from "./AuditoryMode"
@@ -12,11 +12,25 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ selectedMode, theme, onModeChange, onThemeChange, onReset }: DashboardProps) {
-  const [currentViewMode, setCurrentViewMode] = useState<"visual" | "auditory">(selectedMode || "visual")
+  const [currentViewMode, setCurrentViewMode] = useState<"visual" | "auditory">("visual")
 
+  // --- AUTO-SAVE LOGIC ---
+  // 1. Load the last visited tab when the popup opens
+  useEffect(() => {
+    chrome.storage.local.get(["sensa_last_tab"], (res) => {
+      if (res.sensa_last_tab) {
+        setCurrentViewMode(res.sensa_last_tab)
+      } else if (selectedMode) {
+        setCurrentViewMode(selectedMode)
+      }
+    })
+  }, [selectedMode])
+
+  // 2. Save the tab to the database every time you click the switch
   const handleViewSwap = (newMode: "visual" | "auditory") => {
     if (newMode === currentViewMode) return
     setCurrentViewMode(newMode)
+    chrome.storage.local.set({ sensa_last_tab: newMode }) // Instant Auto-Save
     onModeChange(newMode)
   }
 
@@ -27,16 +41,14 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
   return (
     <div className={`w-[350px] h-[550px] flex flex-col font-sans relative overflow-hidden transition-colors duration-500 ease-in-out ${isDark ? 'bg-gray-950 text-gray-200' : 'bg-white text-black'}`}>
       
-      {/* --- FROZEN NAVBAR (Pushed higher to corners) --- */}
+      {/* --- NAVBAR --- */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2 z-20">
         <div className="flex items-center gap-3">
           <img src={sensaLogo} alt="Sensa Logo" className="w-14 h-14 object-contain" />
           <h1 className="text-3xl font-extrabold tracking-tight">Sensa</h1>
         </div>
         
-        {/* Dynamic Header Icon */}
         {isAuditory ? (
-          // Fixed Theme Toggle Slider (Only shows in Auditory Mode)
           <button
             onClick={() => onThemeChange(isDark ? "light" : "dark")}
             className={`relative flex items-center w-16 h-8 rounded-full p-1 transition-colors duration-300 border focus:outline-none
@@ -66,7 +78,6 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
             </div>
           </button>
         ) : (
-          // Help Icon (Shows in Visual Mode)
           <button className="text-[#3B82F6] hover:text-blue-700 transition-colors focus:outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
@@ -80,7 +91,6 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
         <div className={`relative flex w-[85%] h-11 rounded-full p-[3px] border-2 transition-colors duration-500 
           ${isAuditory ? (isDark ? 'bg-gray-900 border-[#FF7A2F]' : 'bg-white border-[#FF7A2F]') : 'bg-white border-[#3B82F6]'}`}
         >
-          {/* Animated Background Slider */}
           <div
             className={`absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-sm
               ${isAuditory ? 'translate-x-[100%] bg-[#FF7A2F]' : 'translate-x-0 bg-[#3B82F6]'}`}
@@ -100,7 +110,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
         </div>
       </div>
 
-      {/* --- NEW PERFECT SLIDER (Replaces react-transition-group) --- */}
+      {/* --- FLEX SLIDER --- */}
       <div className="flex-1 w-full relative overflow-hidden">
         <div
           className="absolute top-0 left-0 w-[200%] h-full flex transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
@@ -115,7 +125,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
         </div>
       </div>
 
-      {/* --- FROZEN FOOTER --- */}
+      {/* --- FOOTER --- */}
       <div className="px-6 flex flex-col items-center gap-2 mt-auto pb-4 z-20">
         <p className={`text-sm font-bold transition-colors duration-500 ${isAuditory ? 'text-[#FF7A2F]' : 'text-[#3B82F6]'}`}>
           Website: <span className={`font-normal ml-1 ${isDark ? 'text-gray-300' : 'text-black'}`}>Google.com</span>
