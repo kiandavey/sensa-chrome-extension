@@ -78,6 +78,12 @@ export default function IndexPopup() {
     })
   }
 
+  const handleModeChange = (mode: "visual" | "auditory") => {
+    updateProfile({
+      globalSettings: { ...userProfile!.globalSettings, activeMode: mode }
+    })
+  }
+
   // --- THE ROUTER ---
   if (currentView === "LOADING" || !userProfile) {
     return <div className="w-[350px] h-[550px] bg-white flex items-center justify-center dark:bg-gray-950 dark:text-gray-300">Loading Data...</div>
@@ -92,7 +98,7 @@ export default function IndexPopup() {
     selectedMode={userProfile.globalSettings.activeMode}
     theme={currentTheme}
     onThemeChange={handleThemeChange} // Persistent theme handler
-    onReset={handleResetApp} onModeChange={function (mode: "visual" | "auditory"): void {
-      throw new Error("Function not implemented.")
-    } }  />
+    onReset={handleResetApp}
+    onModeChange={handleModeChange}
+  />
 }

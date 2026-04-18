@@ -4,13 +4,25 @@ interface VisualDockProps {
   isDark: boolean
   isMinimized: boolean
   onMinimizeToggle: () => void
+  onOpenReadingSpeed: () => void
+  onOpenSettings: () => void
+  readingSpeed: number
   onClose: () => void
 }
 
-export default function VisualDock({ isDark, isMinimized, onMinimizeToggle, onClose }: VisualDockProps) {
+export default function VisualDock({
+  isDark,
+  isMinimized,
+  onMinimizeToggle,
+  onOpenReadingSpeed,
+  onOpenSettings,
+  readingSpeed,
+  onClose
+}: VisualDockProps) {
   const pillBg = isDark ? "bg-gray-900" : "bg-white"
   const iconColorInactive = isDark ? "text-gray-300" : "text-black"
   const hoverInactive = isDark ? "hover:bg-gray-800" : "hover:bg-gray-100"
+  const readingSpeedLabel = `${readingSpeed.toFixed(2).replace(/\.00$/, "")}X`
 
   return (
     <div className="flex flex-col gap-3">
@@ -62,12 +74,18 @@ export default function VisualDock({ isDark, isMinimized, onMinimizeToggle, onCl
             </svg>
           </button>
 
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive} font-extrabold text-sm`}>
+          <button
+            onClick={onOpenReadingSpeed}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive} font-extrabold text-sm`}
+          >
             <Tooltip label="Reading Speed" isDark={isDark} />
-            1X
+            {readingSpeedLabel}
           </button>
 
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            onClick={onOpenSettings}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+          >
             <Tooltip label="Settings" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
               <circle cx="12" cy="12" r="3" />
