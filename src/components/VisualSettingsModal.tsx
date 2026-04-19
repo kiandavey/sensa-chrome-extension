@@ -117,6 +117,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
                 {/* The Floating Bubble (Renders if showColorPicker is true) */}
                 {showColorPicker && (
                   <ColorPickerPopup
+                    isDark={false}
                     initialColor={highlightColor}
                     onColorChange={handleHighlightChange}
                     onClose={() => setShowColorPicker(false)}

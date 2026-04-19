@@ -4,6 +4,8 @@ interface ColorPickerPopupProps {
   onClose: () => void
   initialColor?: string
   onColorChange?: (color: string) => void
+  isDark?: boolean
+  accent?: "blue" | "orange"
 }
 
 // Math helpers for color conversion
@@ -58,7 +60,7 @@ const rgbToHsv = (r: number, g: number, b: number) => {
   return { h, s, v: max }
 }
 
-export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", onColorChange }: ColorPickerPopupProps) {
+export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", onColorChange, isDark = false, accent = "blue" }: ColorPickerPopupProps) {
   // State: Hue (0-1), Saturation (0-1), Value/Brightness (0-1)
   const [hsv, setHsv] = useState(() => {
     const parsed = hexToRgb(initialColor)
@@ -77,6 +79,17 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
   const hex = rgbToHex(r, g, b);
   const [hr, hg, hb] = hsvToRgb(hsv.h, 1, 1)
   const baseHueColor = rgbToHex(hr, hg, hb); // The top-right color of the box
+  const [hexInput, setHexInput] = useState(hex)
+  const [rInput, setRInput] = useState(String(r))
+  const [gInput, setGInput] = useState(String(g))
+  const [bInput, setBInput] = useState(String(b))
+
+  useEffect(() => {
+    setHexInput(hex)
+    setRInput(String(r))
+    setGInput(String(g))
+    setBInput(String(b))
+  }, [hex, r, g, b])
 
   useEffect(() => {
     onColorChange?.(hex)
@@ -86,8 +99,11 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
     const handleDocumentPointerDown = (event: MouseEvent) => {
       if (!popupRef.current) return
       if (isDraggingMain.current || isDraggingHue.current) return
-      const target = event.target as Node
-      if (!popupRef.current.contains(target)) onClose()
+      const path = typeof event.composedPath === "function" ? event.composedPath() : []
+      if (path.includes(popupRef.current)) return
+      const target = event.target as Node | null
+      if (target && popupRef.current.contains(target)) return
+      onClose()
     }
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -150,12 +166,55 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
     };
   }, [handleMainDrag, handleHueDrag]);
 
+  const popupClass = isDark
+    ? "bg-gray-900 border-gray-700 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.55)]"
+    : "bg-white border-gray-100 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.2)]"
+  const arrowClass = isDark ? "bg-gray-900 border-gray-700" : "bg-white border-gray-100"
+  const labelClass = isDark ? "text-gray-200" : "text-black"
+  const inputClass = isDark
+    ? "border-gray-700 text-gray-100 bg-gray-800"
+    : "border-gray-200 text-gray-800 bg-gray-50"
+  const actionButtonClass = accent === "orange"
+    ? "bg-[#FF7A2F] hover:bg-[#F26A1B]"
+    : "bg-[#3B82F6] hover:bg-blue-600"
+
+  const handleHexInput = (value: string) => {
+    const normalized = value.startsWith("#") ? value : `#${value}`
+    if (!/^#?[A-Fa-f0-9]{0,6}$/.test(value)) return
+
+    setHexInput(normalized)
+
+    if (normalized.length === 7) {
+      const parsed = hexToRgb(normalized)
+      if (!parsed) return
+      setHsv(rgbToHsv(parsed[0], parsed[1], parsed[2]))
+    }
+  }
+
+  const handleRgbInput = (channel: "r" | "g" | "b", value: string) => {
+    if (!/^\d{0,3}$/.test(value)) return
+
+    if (channel === "r") setRInput(value)
+    if (channel === "g") setGInput(value)
+    if (channel === "b") setBInput(value)
+
+    if (value === "") return
+
+    const nextValue = Number.parseInt(value, 10)
+    if (Number.isNaN(nextValue) || nextValue < 0 || nextValue > 255) return
+
+    const nextR = channel === "r" ? nextValue : r
+    const nextG = channel === "g" ? nextValue : g
+    const nextB = channel === "b" ? nextValue : b
+    setHsv(rgbToHsv(nextR, nextG, nextB))
+  }
+
   return (
     <div
       ref={popupRef}
-      className="absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 z-[100000] w-[320px] bg-white rounded-xl shadow-[0_12px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-100 p-4 font-sans select-none cursor-default"
+      className={`absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 z-[100000] w-[320px] rounded-xl border p-4 font-sans select-none cursor-default ${popupClass}`}
     >
-      <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-[14px] h-[14px] bg-white rotate-45 border-b border-r border-gray-100 pointer-events-none"></div>
+      <div className={`absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-[14px] h-[14px] rotate-45 border-b border-r pointer-events-none ${arrowClass}`}></div>
       
       {/* 1. Main Gradient Area (Saturation/Brightness) */}
       <div 
@@ -198,27 +257,43 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
       {/* 3. Hex & RGB Inputs */}
       <div className="mt-5 flex gap-3">
         <div className="flex flex-col gap-1.5 flex-[2]">
-          <label className="text-[12px] font-bold text-black tracking-wide">Hex</label>
-          <input readOnly value={hex} className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-[14px] text-gray-800 outline-none bg-gray-50" />
+          <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>Hex</label>
+          <input
+            value={hexInput}
+            onChange={(event) => handleHexInput(event.target.value.trim())}
+            className={`w-full border rounded-lg px-3 py-2.5 text-[14px] outline-none ${inputClass}`}
+          />
         </div>
         <div className="flex flex-col gap-1.5 flex-1">
-          <label className="text-[12px] font-bold text-black tracking-wide">R</label>
-          <input readOnly value={r} className="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-[14px] text-center text-gray-800 outline-none bg-gray-50" />
+          <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>R</label>
+          <input
+            value={rInput}
+            onChange={(event) => handleRgbInput("r", event.target.value.trim())}
+            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+          />
         </div>
         <div className="flex flex-col gap-1.5 flex-1">
-          <label className="text-[12px] font-bold text-black tracking-wide">G</label>
-          <input readOnly value={g} className="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-[14px] text-center text-gray-800 outline-none bg-gray-50" />
+          <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>G</label>
+          <input
+            value={gInput}
+            onChange={(event) => handleRgbInput("g", event.target.value.trim())}
+            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+          />
         </div>
         <div className="flex flex-col gap-1.5 flex-1">
-          <label className="text-[12px] font-bold text-black tracking-wide">B</label>
-          <input readOnly value={b} className="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-[14px] text-center text-gray-800 outline-none bg-gray-50" />
+          <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>B</label>
+          <input
+            value={bInput}
+            onChange={(event) => handleRgbInput("b", event.target.value.trim())}
+            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+          />
         </div>
       </div>
 
       <div className="mt-4 flex justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-sm font-semibold rounded-md bg-[#3B82F6] text-white hover:bg-blue-600 transition-colors"
+          className={`px-4 py-2 text-sm font-semibold rounded-md text-white transition-colors ${actionButtonClass}`}
         >
           Done
         </button>

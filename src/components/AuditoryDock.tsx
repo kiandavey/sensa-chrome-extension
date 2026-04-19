@@ -4,10 +4,16 @@ interface AuditoryDockProps {
   isDark: boolean
   isMinimized: boolean
   onMinimizeToggle: () => void
+  onOpenCaptionLanguage: () => void
+  onOpenTextSize: () => void
+  onOpenCaptionTransparency: () => void
+  isFocusMode: boolean
+  onToggleFocusMode: () => void
+  onOpenSettings: () => void
   onClose: () => void
 }
 
-export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, onClose }: AuditoryDockProps) {
+export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, onOpenCaptionLanguage, onOpenTextSize, onOpenCaptionTransparency, isFocusMode, onToggleFocusMode, onOpenSettings, onClose }: AuditoryDockProps) {
   const pillBg = isDark ? "bg-gray-900" : "bg-white"
   const iconColorInactive = isDark ? "text-gray-300" : "text-black"
   const hoverInactive = isDark ? "hover:bg-gray-800" : "hover:bg-gray-100"
@@ -41,7 +47,10 @@ export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, on
       {/* MIDDLE PILL */}
       {!isMinimized && (
         <div className={`flex flex-col items-center ${pillBg} rounded-full p-1.5 border-2 border-[#FF7A2F] shadow-lg gap-1.5`}>
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            onClick={onOpenCaptionLanguage}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+          >
             <Tooltip label="Caption Language" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <circle cx="12" cy="12" r="10" />
@@ -49,7 +58,10 @@ export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, on
               <path d="M2 12h20" />
             </svg>
           </button>
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            onClick={onOpenTextSize}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+          >
             <Tooltip label="Text Size" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <polyline points="4 7 4 4 20 4 20 7" />
@@ -57,14 +69,20 @@ export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, on
               <line x1="8" y1="20" x2="16" y2="20" />
             </svg>
           </button>
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            onClick={onOpenCaptionTransparency}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+          >
             <Tooltip label="Caption Transparency" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
               <rect x="7" y="13" width="10" height="4" rx="1" />
             </svg>
           </button>
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            onClick={onToggleFocusMode}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full transition-colors ${isFocusMode ? "bg-[#FF7A2F] text-white shadow-md hover:bg-[#E86A25]" : `${hoverInactive} ${iconColorInactive}`}`}
+          >
             <Tooltip label="Focus Mode" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <path d="M3 8V5a2 2 0 0 1 2-2h3" />
@@ -74,7 +92,11 @@ export default function AuditoryDock({ isDark, isMinimized, onMinimizeToggle, on
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+          >
             <Tooltip label="Settings" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
               <circle cx="12" cy="12" r="3" />

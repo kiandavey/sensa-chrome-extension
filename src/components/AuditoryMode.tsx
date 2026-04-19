@@ -34,14 +34,15 @@ export default function AuditoryMode({ isDark }: AuditoryModeProps) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 w-full h-full">
-      <div className="flex items-center justify-center gap-5 mb-8 w-full">
+      <div className="flex items-center justify-center gap-7 mb-8 w-full">
         
         {/* LEFT SOUNDWAVES */}
-        <div className={`transition-colors duration-300 shrink-0 flex items-center justify-center w-12 h-12 ${isCapturing ? 'text-[#FF5722]' : (isDark ? 'text-gray-700' : 'text-[#FAD5B4]')}`}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-full h-full shrink-0">
-            <path d="M18 3 A 16 16 0 0 0 18 21" />
-            <path d="M14 7 A 10 10 0 0 0 14 17" />
-            <path d="M10 11 A 4 4 0 0 0 10 13" />
+        <div className={`transition-colors duration-300 shrink-0 flex items-center justify-center w-14 h-14 ${isCapturing ? 'text-[#FF5722]' : (isDark ? 'text-gray-700' : 'text-[#FAD5B4]')}`}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full shrink-0">
+            <rect x="4" y="9" width="2.8" height="6" rx="1.4" />
+            <rect x="8.2" y="7" width="2.8" height="10" rx="1.4" />
+            <rect x="12.4" y="5" width="2.8" height="14" rx="1.4" />
+            <rect x="16.6" y="7.5" width="2.8" height="9" rx="1.4" />
           </svg>
         </div>
 
@@ -63,11 +64,12 @@ export default function AuditoryMode({ isDark }: AuditoryModeProps) {
         </button>
 
         {/* RIGHT SOUNDWAVES */}
-        <div className={`transition-colors duration-300 shrink-0 flex items-center justify-center w-12 h-12 ${isCapturing ? 'text-[#FF5722]' : (isDark ? 'text-gray-700' : 'text-[#FAD5B4]')}`}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-full h-full shrink-0">
-            <path d="M6 3 A 16 16 0 0 1 6 21" />
-            <path d="M10 7 A 10 10 0 0 1 10 17" />
-            <path d="M14 11 A 4 4 0 0 1 14 13" />
+        <div className={`transition-colors duration-300 shrink-0 flex items-center justify-center w-14 h-14 ${isCapturing ? 'text-[#FF5722]' : (isDark ? 'text-gray-700' : 'text-[#FAD5B4]')}`}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full shrink-0">
+            <rect x="4" y="7.5" width="2.8" height="9" rx="1.4" />
+            <rect x="8.2" y="5" width="2.8" height="14" rx="1.4" />
+            <rect x="12.4" y="7" width="2.8" height="10" rx="1.4" />
+            <rect x="16.6" y="9" width="2.8" height="6" rx="1.4" />
           </svg>
         </div>
 
