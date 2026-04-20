@@ -1,0 +1,1 @@
+export { useSpeech } from "../useSpeech";

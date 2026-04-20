@@ -1,23 +1,34 @@
-import { Tooltip } from "./Tooltip" // We will create this shared component next!
+import React from "react"
+import { Tooltip } from "./Tooltip"
 
 interface VisualDockProps {
   isDark: boolean
   isMinimized: boolean
+  readingSpeed: number
+  isPlaying: boolean
+  isPaused: boolean
+  onTogglePlay: () => void
+  onNext: () => void
+  onPrev: () => void
   onMinimizeToggle: () => void
   onOpenReadingSpeed: () => void
   onOpenSettings: () => void
-  readingSpeed: number
   onClose: () => void
 }
 
 export default function VisualDock({
   isDark,
   isMinimized,
+  readingSpeed,
+  isPlaying,
+  isPaused,
+  onTogglePlay,
+  onNext,
+  onPrev,
   onMinimizeToggle,
   onOpenReadingSpeed,
   onOpenSettings,
-  readingSpeed,
-  onClose
+  onClose,
 }: VisualDockProps) {
   const pillBg = isDark ? "bg-gray-900" : "bg-white"
   const iconColorInactive = isDark ? "text-gray-300" : "text-black"
@@ -26,9 +37,8 @@ export default function VisualDock({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* TOP PILL */}
       <div className={`flex flex-col items-center ${pillBg} rounded-full p-1.5 border-2 border-[#0A44FF] shadow-lg gap-2`}>
-        <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+        <button type="button" className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
           <Tooltip label="Audio Visualizer" isDark={isDark} />
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
             <rect x="5" y="9" width="2" height="6" rx="1" />
@@ -38,7 +48,12 @@ export default function VisualDock({
           </svg>
         </button>
 
-        <button className="relative group w-10 h-10 flex items-center justify-center rounded-full bg-[#0A44FF] text-white shadow-md hover:bg-blue-700 transition-colors">
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          className="relative group w-10 h-10 flex items-center justify-center rounded-full bg-[#0A44FF] text-white shadow-md hover:bg-blue-700 transition-colors"
+          aria-label="Speak"
+        >
           <Tooltip label="Speak" isDark={isDark} />
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
@@ -48,17 +63,33 @@ export default function VisualDock({
         </button>
       </div>
 
-      {/* MIDDLE PILL (Hides when minimized) */}
       {!isMinimized && (
         <div className={`flex flex-col items-center ${pillBg} rounded-full p-1.5 border-2 border-[#0A44FF] shadow-lg gap-1.5`}>
-          <button className="relative group w-10 h-10 flex items-center justify-center rounded-full bg-[#0A44FF] text-white shadow-md hover:bg-blue-700 transition-colors">
-            <Tooltip label="Play" isDark={isDark} />
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-1">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            className="relative group w-10 h-10 flex items-center justify-center rounded-full bg-[#0A44FF] text-white shadow-md hover:bg-blue-700 transition-colors"
+            aria-label={isPlaying && !isPaused ? "Pause speech" : "Play speech"}
+          >
+            <Tooltip label={isPlaying && !isPaused ? "Pause" : "Play"} isDark={isDark} />
+            {isPlaying && !isPaused ? (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <rect x="7" y="5" width="4" height="14" rx="1" />
+                <rect x="13" y="5" width="4" height="14" rx="1" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 ml-1">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            )}
           </button>
-          
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+
+          <button
+            type="button"
+            onClick={onNext}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+            aria-label="Next segment"
+          >
             <Tooltip label="Next" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <polygon points="5 4 15 12 5 20 5 4" />
@@ -66,7 +97,12 @@ export default function VisualDock({
             </svg>
           </button>
 
-          <button className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}>
+          <button
+            type="button"
+            onClick={onPrev}
+            className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
+            aria-label="Previous segment"
+          >
             <Tooltip label="Previous" isDark={isDark} />
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
               <polygon points="19 20 9 12 19 4 19 20" />
@@ -75,6 +111,7 @@ export default function VisualDock({
           </button>
 
           <button
+            type="button"
             onClick={onOpenReadingSpeed}
             className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive} font-extrabold text-sm`}
           >
@@ -83,6 +120,7 @@ export default function VisualDock({
           </button>
 
           <button
+            type="button"
             onClick={onOpenSettings}
             className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
           >
@@ -95,9 +133,9 @@ export default function VisualDock({
         </div>
       )}
 
-      {/* BOTTOM PILL */}
       <div className={`flex flex-col items-center ${pillBg} rounded-full p-1.5 border-2 border-[#0A44FF] shadow-lg gap-2`}>
-        <button 
+        <button
+          type="button"
           onClick={onMinimizeToggle}
           className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
         >
@@ -115,7 +153,8 @@ export default function VisualDock({
           )}
         </button>
 
-        <button 
+        <button
+          type="button"
           onClick={onClose}
           className={`relative group w-10 h-10 flex items-center justify-center rounded-full ${hoverInactive} transition-colors ${iconColorInactive}`}
         >

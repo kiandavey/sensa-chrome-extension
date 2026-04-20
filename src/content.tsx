@@ -1,7 +1,7 @@
 import cssText from "data-text:~style.css"
 import type { PlasmoCSConfig } from "plasmo"
 import { useState, useRef, useEffect } from "react"
-import VisualDock from "./components/VisualDock"
+import VisualDock from "./components/VisualDock/index"
 import AuditoryDock from "./components/AuditoryDock"
 import VisualSettingsModal from "./components/VisualSettingsModal" // NEW IMPORT
 import AuditorySettingsModal from "./components/AuditorySettingsModal"
@@ -11,6 +11,7 @@ import TextSizeOverlay from "./components/TextSizeOverlay"
 import CaptionTransparencyOverlay from "./components/CaptionTransparencyOverlay"
 import FocusModeOverlay from "./components/FocusModeOverlay"
 import type { SensaUserProfile } from "./lib/storage"
+import { useSpeech } from "./hooks/useSpeech/index"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"]
@@ -47,6 +48,9 @@ export default function FloatingDockManager() {
   const dragRef = useRef<HTMLDivElement>(null)
   const dragStartPos = useRef({ x: 0, y: 0 })
 
+  const [highlightColor, setHighlightColor] = useState("#FFFE00")
+  const { isPlaying, isPaused, togglePlayPause, next, prev } = useSpeech(readingSpeed, highlightColor)
+
   // --- THE BRIDGE ---
   useEffect(() => {
     chrome.storage.local.get(["sensa_visual_active", "sensa_auditory_active", "sensa_user_profile", "sensa_visual_reading_speed", "sensa_auditory_caption_language", "sensa_auditory_text_size", "sensa_auditory_caption_transparency", "sensa_auditory_focus_mode"], (res) => {
@@ -57,6 +61,9 @@ export default function FloatingDockManager() {
       if (typeof res.sensa_auditory_text_size === "number") setTextSize(res.sensa_auditory_text_size)
       if (typeof res.sensa_auditory_caption_transparency === "number") setCaptionTransparency(res.sensa_auditory_caption_transparency)
       if (typeof res.sensa_auditory_focus_mode === "boolean") setIsFocusMode(res.sensa_auditory_focus_mode)
+      if (typeof res.sensa_visual_highlight_color === "string") {
+        setHighlightColor(res.sensa_visual_highlight_color)
+      }
       if (typeof res.sensa_visual_reading_speed === "number") {
         setReadingSpeed(res.sensa_visual_reading_speed)
       } else if (typeof res.sensa_user_profile?.visualState?.readingSpeed === "number") {
@@ -70,6 +77,9 @@ export default function FloatingDockManager() {
         // If Visual mode gets turned off, make sure we close the settings menu too!
         if (!changes.sensa_visual_active.newValue) setIsVisualSettingsOpen(false) 
         if (!changes.sensa_visual_active.newValue) setIsReadingSpeedOpen(false)
+        if (changes.sensa_visual_highlight_color !== undefined) {
+          setHighlightColor(changes.sensa_visual_highlight_color.newValue)
+        }
       }
       if (changes.sensa_auditory_active !== undefined) {
         setAuditoryActive(changes.sensa_auditory_active.newValue)
@@ -238,10 +248,15 @@ export default function FloatingDockManager() {
           <VisualDock 
             isDark={isDark} 
             isMinimized={isMinimized} 
+            readingSpeed={readingSpeed}
+            isPlaying={isPlaying}            // <-- NEW PROP
+            isPaused={isPaused}              // <-- NEW PROP
+            onTogglePlay={togglePlayPause}   // <-- NEW PROP
+            onNext={next}                    // <-- NEW PROP
+            onPrev={prev}                    // <-- NEW PROP
             onMinimizeToggle={() => setIsMinimized(!isMinimized)} 
             onOpenReadingSpeed={() => setIsReadingSpeedOpen(true)}
-            onOpenSettings={() => setIsVisualSettingsOpen(true)} // Pass the command to open
-            readingSpeed={readingSpeed}
+            onOpenSettings={() => setIsVisualSettingsOpen(true)} 
             onClose={() => {
               setVisualActive(false)
               chrome.storage.local.set({ sensa_visual_active: false })
