@@ -24,6 +24,7 @@ export default function VisualMode() {
   // Send signal to web page
   const handleToggle = () => {
     const newState = !isListening
+    chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: newState ? "visual" : null })
     chrome.storage.local.set({ sensa_visual_active: newState })
   }
 

@@ -71,7 +71,12 @@ export default function IndexPopup() {
   }
 
   const handleResetApp = () => {
-    chrome.storage.local.set({ sensa_user_profile: DEFAULT_PROFILE }, () => {
+    chrome.storage.local.set({
+      sensa_user_profile: DEFAULT_PROFILE,
+      sensa_visual_active: false,
+      sensa_auditory_active: false
+    }, () => {
+      chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: null })
       setUserProfile(DEFAULT_PROFILE)
       setCurrentTheme(DEFAULT_PROFILE.globalSettings.theme)
       setCurrentView("MODE_SELECTION")

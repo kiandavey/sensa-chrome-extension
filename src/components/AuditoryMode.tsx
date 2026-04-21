@@ -29,6 +29,7 @@ export default function AuditoryMode({ isDark }: AuditoryModeProps) {
   const handleToggle = () => {
     const newState = !isCapturing
     setIsCapturing(newState)
+    chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: newState ? "auditory" : null })
     chrome.storage.local.set({ sensa_auditory_active: newState })
   }
 

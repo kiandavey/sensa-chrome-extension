@@ -4,6 +4,109 @@ const READABLE_SELECTOR = "h1, h2, h3, h4, h5, h6, p, li, blockquote, pre";
 const EXCLUDED_ANCESTOR_SELECTOR =
   "nav, header, footer, aside, form, button, [aria-hidden='true'], [role='navigation']";
 const SENTENCE_END_RE = /[.!?。！？]/;
+const COMMON_ABBREVIATIONS = new Set([
+  "mr.",
+  "mrs.",
+  "ms.",
+  "dr.",
+  "prof.",
+  "sr.",
+  "jr.",
+  "st.",
+  "vs.",
+  "etc.",
+  "e.g.",
+  "i.e.",
+  "u.s.",
+  "u.k.",
+  "a.m.",
+  "p.m."
+]);
+
+interface SentenceSegment {
+  elementIndex: number;
+  start: number;
+  end: number;
+  text: string;
+}
+
+const hasSpeakableContent = (text: string) => /\p{L}/u.test(text);
+
+const normalizeSpeechSlice = (source: string) => {
+  const normalizedToSource: number[] = [];
+  let normalized = "";
+
+  const pattern = /\bNo\.\s*(\d+)\b/gi;
+  let cursor = 0;
+  let match: RegExpExecArray | null = pattern.exec(source);
+
+  const appendSourceVerbatim = (text: string, sourceStart: number) => {
+    for (let i = 0; i < text.length; i += 1) {
+      normalized += text[i];
+      normalizedToSource.push(sourceStart + i);
+    }
+  };
+
+  const appendNormalizedToken = (token: string, sourceIndex: number) => {
+    for (let i = 0; i < token.length; i += 1) {
+      normalized += token[i];
+      normalizedToSource.push(sourceIndex);
+    }
+  };
+
+  while (match) {
+    const matchIndex = match.index;
+    const matchText = match[0];
+    const digits = match[1];
+
+    appendSourceVerbatim(source.slice(cursor, matchIndex), cursor);
+    appendNormalizedToken(`number ${digits}`, matchIndex);
+
+    cursor = matchIndex + matchText.length;
+    match = pattern.exec(source);
+  }
+
+  appendSourceVerbatim(source.slice(cursor), cursor);
+
+  return { normalized, normalizedToSource };
+};
+
+const shouldSplitAtDot = (text: string, dotIndex: number) => {
+  const prev = text[dotIndex - 1] ?? "";
+  const next = text[dotIndex + 1] ?? "";
+
+  // Decimal numbers like 3.14 are not sentence boundaries.
+  if (/\d/.test(prev) && /\d/.test(next)) {
+    return false;
+  }
+
+  const left = text.slice(Math.max(0, dotIndex - 20), dotIndex + 1);
+  const tokenMatch = left.match(/([A-Za-z][A-Za-z.]*)\.$/);
+  if (!tokenMatch) return true;
+
+  const token = `${tokenMatch[1]}.`;
+  const tokenLower = token.toLowerCase();
+
+  if (COMMON_ABBREVIATIONS.has(tokenLower)) {
+    return false;
+  }
+
+  // Handles dotted abbreviations/initialisms like U.S. and U.S.A.
+  if (/^(?:[A-Za-z]\.){2,}$/.test(token)) {
+    return false;
+  }
+
+  // Handles initials like "J. Smith".
+  if (/^[A-Za-z]\.$/.test(token)) {
+    const remainder = text.slice(dotIndex + 1);
+    const nextNonSpace = remainder.match(/\S/)?.[0] ?? "";
+    if (/[A-Z]/.test(nextNonSpace)) {
+      return false;
+    }
+  }
+
+  return true;
+};
 
 const isVisible = (el: HTMLElement) => {
   const style = window.getComputedStyle(el);
@@ -53,55 +156,59 @@ const resolveTextOffset = (nodes: Text[], absoluteOffset: number) => {
   return { node: fallbackNode, offset: fallbackLength };
 };
 
-const findSentenceBounds = (text: string, charIndex: number) => {
-  if (!text) return null;
-
-  let cursor = Math.min(Math.max(0, charIndex), Math.max(0, text.length - 1));
-  while (cursor > 0 && /\s/.test(text[cursor])) cursor -= 1;
-  if (/\s/.test(text[cursor] ?? "")) return null;
+const splitSentenceRanges = (text: string) => {
+  const ranges: Array<{ start: number; end: number }> = [];
+  if (!text) return ranges;
 
   let start = 0;
-  for (let i = cursor; i >= 0; i -= 1) {
-    if (SENTENCE_END_RE.test(text[i])) {
-      start = i + 1;
-      break;
+
+  for (let i = 0; i < text.length; i += 1) {
+    if (!SENTENCE_END_RE.test(text[i])) continue;
+
+    if (text[i] === "." && !shouldSplitAtDot(text, i)) {
+      continue;
     }
+
+    let end = i + 1;
+    while (end < text.length && /["'”’\])}\s]/.test(text[end])) end += 1;
+
+    let normalizedStart = start;
+    while (normalizedStart < end && /[\s"'“”‘’([{]/.test(text[normalizedStart])) normalizedStart += 1;
+
+    let normalizedEnd = end;
+    while (normalizedEnd > normalizedStart && /\s/.test(text[normalizedEnd - 1])) normalizedEnd -= 1;
+
+    if (normalizedStart < normalizedEnd) {
+      ranges.push({ start: normalizedStart, end: normalizedEnd });
+    }
+
+    start = end;
+    i = end - 1;
   }
 
-  while (start < text.length && /[\s\"'“”‘’([{]/.test(text[start])) start += 1;
+  let tailStart = start;
+  while (tailStart < text.length && /\s/.test(text[tailStart])) tailStart += 1;
+  let tailEnd = text.length;
+  while (tailEnd > tailStart && /\s/.test(text[tailEnd - 1])) tailEnd -= 1;
 
-  let end = text.length;
-  for (let i = cursor; i < text.length; i += 1) {
-    if (SENTENCE_END_RE.test(text[i])) {
-      end = i + 1;
-      break;
-    }
+  if (tailStart < tailEnd) {
+    ranges.push({ start: tailStart, end: tailEnd });
   }
 
-  while (end < text.length && /[\"'”’\])}\s]/.test(text[end])) end += 1;
-
-  if (start >= end) return null;
-  return { start, end };
+  return ranges;
 };
 
-export function useSpeech(readingSpeed: number, highlightColor: string) {
+export function useSpeech(readingSpeed: number, highlightColor: string, isOverlaySuppressed = false) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
   const elementsRef = useRef<HTMLElement[]>([]);
-  const currentIndexRef = useRef(0);
+  const segmentsRef = useRef<SentenceSegment[]>([]);
+  const currentSegmentIndexRef = useRef(0);
+  const currentCharOffsetRef = useRef(0);
   const speechSessionRef = useRef(0);
 
-  const activeElementRef = useRef<HTMLElement | null>(null);
-  const activeStyleRef = useRef({
-    outline: "",
-    transition: ""
-  });
-
   const sentenceOverlayRootRef = useRef<HTMLDivElement | null>(null);
-  const speechTextRef = useRef("");
-  const speechNodesRef = useRef<Text[]>([]);
-  const activeSentenceCharIndexRef = useRef(0);
 
   const clearSentenceOverlay = useCallback(() => {
     const root = sentenceOverlayRootRef.current;
@@ -109,27 +216,37 @@ export function useSpeech(readingSpeed: number, highlightColor: string) {
     root.replaceChildren();
   }, []);
 
-  const showSentenceOverlayForChar = useCallback(
-    (charIndex: number) => {
+  const findAdjacentSegment = useCallback((fromIndex: number, direction: 1 | -1) => {
+    const segments = segmentsRef.current;
+    let idx = fromIndex + direction;
+
+    while (idx >= 0 && idx < segments.length) {
+      if (hasSpeakableContent(segments[idx].text)) {
+        return idx;
+      }
+      idx += direction;
+    }
+
+    return -1;
+  }, []);
+
+  const renderSegmentOverlay = useCallback(
+    (segment: SentenceSegment) => {
       const root = sentenceOverlayRootRef.current;
-      const text = speechTextRef.current;
-      const nodes = speechNodesRef.current;
-
-      if (!root || !text || !nodes.length) {
+      const element = elementsRef.current[segment.elementIndex];
+      if (!root || !element) {
         clearSentenceOverlay();
         return;
       }
 
-      const bounds = findSentenceBounds(text, charIndex);
-      if (!bounds) {
+      const nodes = getTextNodes(element);
+      if (!nodes.length) {
         clearSentenceOverlay();
         return;
       }
 
-      activeSentenceCharIndexRef.current = charIndex;
-
-      const startPos = resolveTextOffset(nodes, bounds.start);
-      const endPos = resolveTextOffset(nodes, bounds.end);
+      const startPos = resolveTextOffset(nodes, segment.start);
+      const endPos = resolveTextOffset(nodes, segment.end);
       if (!startPos.node || !endPos.node) {
         clearSentenceOverlay();
         return;
@@ -165,74 +282,93 @@ export function useSpeech(readingSpeed: number, highlightColor: string) {
     [clearSentenceOverlay, highlightColor]
   );
 
-  const clearHighlight = useCallback(() => {
-    const active = activeElementRef.current;
-    if (active) {
-      active.style.outline = activeStyleRef.current.outline;
-      active.style.transition = activeStyleRef.current.transition;
-      activeElementRef.current = null;
+  useEffect(() => {
+    if (isOverlaySuppressed) {
+      clearSentenceOverlay();
+    } else {
+      // Re-render the current segment when suppression is lifted
+      const segment = segmentsRef.current[currentSegmentIndexRef.current];
+      if (segment) {
+        renderSegmentOverlay(segment);
+      }
     }
-
-    clearSentenceOverlay();
-  }, [clearSentenceOverlay]);
-
-  const applyParagraphFocus = useCallback(
-    (el: HTMLElement) => {
-      clearHighlight();
-
-      activeStyleRef.current = {
-        outline: el.style.outline,
-        transition: el.style.transition
-      };
-
-      activeElementRef.current = el;
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    },
-    [clearHighlight, highlightColor]
-  );
+  }, [clearSentenceOverlay, isOverlaySuppressed, renderSegmentOverlay]);
 
   const extractReadableContent = useCallback(() => {
     const root =
       (document.querySelector("main, article, [role='main']") as HTMLElement | null) ?? document.body;
 
-    const nodes = Array.from(root.querySelectorAll<HTMLElement>(READABLE_SELECTOR)).filter(
+    const elements = Array.from(root.querySelectorAll<HTMLElement>(READABLE_SELECTOR)).filter(
       (el) => isVisible(el) && isReadable(el)
     );
 
-    elementsRef.current = nodes;
-    if (currentIndexRef.current >= nodes.length) {
-      currentIndexRef.current = Math.max(0, nodes.length - 1);
+    const segments: SentenceSegment[] = [];
+    elements.forEach((element, elementIndex) => {
+      const fullText = getTextNodes(element)
+        .map((n) => n.nodeValue ?? "")
+        .join("");
+
+      const ranges = splitSentenceRanges(fullText);
+      for (const range of ranges) {
+        const text = fullText.slice(range.start, range.end).trim();
+        if (!text) continue;
+        if (!hasSpeakableContent(text)) continue;
+        segments.push({ elementIndex, start: range.start, end: range.end, text });
+      }
+    });
+
+    elementsRef.current = elements;
+    segmentsRef.current = segments;
+
+    if (currentSegmentIndexRef.current >= segments.length) {
+      currentSegmentIndexRef.current = Math.max(0, segments.length - 1);
+      currentCharOffsetRef.current = 0;
     }
   }, []);
 
-  const speakAtIndex = useCallback(
-    (index: number) => {
-      if (!elementsRef.current.length) {
+  const speakAtSegment = useCallback(
+    (segmentIndex: number, startOffset = 0, shouldScroll = true) => {
+      if (!segmentsRef.current.length) {
         setIsPlaying(false);
         setIsPaused(false);
         return;
       }
 
-      const safeIndex = Math.min(Math.max(index, 0), elementsRef.current.length - 1);
-      const target = elementsRef.current[safeIndex];
-      const textNodes = getTextNodes(target);
-      const textToRead = textNodes.map((n) => n.nodeValue ?? "").join("");
-
-      if (!textToRead.trim()) {
+      const safeIndex = Math.min(Math.max(segmentIndex, 0), segmentsRef.current.length - 1);
+      const segment = segmentsRef.current[safeIndex];
+      const element = elementsRef.current[segment.elementIndex];
+      if (!segment || !element) {
         setIsPlaying(false);
         setIsPaused(false);
+        return;
+      }
+
+      const safeStartOffset = Math.min(Math.max(0, startOffset), Math.max(0, segment.text.length - 1));
+      const sourceSlice = segment.text.slice(safeStartOffset);
+      const { normalized: speechText, normalizedToSource } = normalizeSpeechSlice(sourceSlice);
+
+      if (!speechText.trim() || !hasSpeakableContent(speechText)) {
+        const next = findAdjacentSegment(safeIndex, 1);
+        if (next !== -1) {
+          speakAtSegment(next, 0, true);
+        } else {
+          setIsPlaying(false);
+          setIsPaused(false);
+        }
         return;
       }
 
       const sessionId = ++speechSessionRef.current;
-      currentIndexRef.current = safeIndex;
-      speechNodesRef.current = textNodes;
-      speechTextRef.current = textToRead;
+      currentSegmentIndexRef.current = safeIndex;
+      currentCharOffsetRef.current = safeStartOffset;
 
       window.speechSynthesis.cancel();
-      applyParagraphFocus(target);
+      renderSegmentOverlay(segment);
+      if (shouldScroll) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
 
-      const utterance = new SpeechSynthesisUtterance(textToRead);
+      const utterance = new SpeechSynthesisUtterance(speechText);
       utterance.rate = readingSpeed;
 
       utterance.onstart = () => {
@@ -243,59 +379,71 @@ export function useSpeech(readingSpeed: number, highlightColor: string) {
 
       utterance.onboundary = (event) => {
         if (sessionId !== speechSessionRef.current) return;
-        showSentenceOverlayForChar(event.charIndex ?? 0);
+        const boundaryIndex = Math.min(
+          Math.max(0, event.charIndex ?? 0),
+          Math.max(0, normalizedToSource.length - 1)
+        );
+        const mappedSourceOffset = normalizedToSource[boundaryIndex] ?? sourceSlice.length;
+        currentCharOffsetRef.current = safeStartOffset + mappedSourceOffset;
       };
 
       utterance.onend = () => {
         if (sessionId !== speechSessionRef.current) return;
-        clearSentenceOverlay();
 
-        const nextIndex = currentIndexRef.current + 1;
-        if (nextIndex < elementsRef.current.length) {
-          speakAtIndex(nextIndex);
+        const nextIndex = findAdjacentSegment(currentSegmentIndexRef.current, 1);
+        if (nextIndex !== -1) {
+          speakAtSegment(nextIndex, 0, true);
           return;
         }
 
+        clearSentenceOverlay();
         setIsPlaying(false);
         setIsPaused(false);
+        currentSegmentIndexRef.current = 0;
+        currentCharOffsetRef.current = 0;
       };
 
       utterance.onerror = (e) => {
         if (sessionId !== speechSessionRef.current) return;
-        clearSentenceOverlay();
-
         if (e.error !== "canceled") {
           console.error("Speech error:", e);
         }
+        clearSentenceOverlay();
         setIsPlaying(false);
         setIsPaused(false);
+        currentSegmentIndexRef.current = 0;
+        currentCharOffsetRef.current = 0;
       };
 
       window.speechSynthesis.speak(utterance);
     },
-    [applyParagraphFocus, clearSentenceOverlay, readingSpeed, showSentenceOverlayForChar]
+    [clearSentenceOverlay, findAdjacentSegment, readingSpeed, renderSegmentOverlay]
   );
 
   useEffect(() => {
+    if (isOverlaySuppressed) {
+      clearSentenceOverlay();
+    }
+
     const timeout = window.setTimeout(extractReadableContent, 600);
 
     const overlayRoot = document.createElement("div");
     overlayRoot.id = "sensa-sentence-highlight-overlay";
-    overlayRoot.style.position = "fixed";
+    overlayRoot.style.position = "absolute";
     overlayRoot.style.left = "0";
     overlayRoot.style.top = "0";
-    overlayRoot.style.width = "100vw";
-    overlayRoot.style.height = "100vh";
+    overlayRoot.style.width = "100%";
+    overlayRoot.style.height = "100%";
     overlayRoot.style.pointerEvents = "none";
     overlayRoot.style.zIndex = "2147483647";
     overlayRoot.style.overflow = "visible";
-    overlayRoot.style.position = "absolute";
     sentenceOverlayRootRef.current = overlayRoot;
     document.body.appendChild(overlayRoot);
 
     const repaintActiveSentence = () => {
-      if (!speechTextRef.current || !speechNodesRef.current.length) return;
-      showSentenceOverlayForChar(activeSentenceCharIndexRef.current);
+      const segment = segmentsRef.current[currentSegmentIndexRef.current];
+      if (!segment) return;
+      renderSegmentOverlay(segment);
     };
 
     window.addEventListener("scroll", repaintActiveSentence, true);
@@ -305,7 +453,7 @@ export function useSpeech(readingSpeed: number, highlightColor: string) {
       window.clearTimeout(timeout);
       speechSessionRef.current += 1;
       window.speechSynthesis.cancel();
-      clearHighlight();
+      clearSentenceOverlay();
 
       window.removeEventListener("scroll", repaintActiveSentence, true);
       window.removeEventListener("resize", repaintActiveSentence);
@@ -315,41 +463,52 @@ export function useSpeech(readingSpeed: number, highlightColor: string) {
       }
       sentenceOverlayRootRef.current = null;
     };
-  }, [clearHighlight, extractReadableContent]);
+  }, [clearSentenceOverlay, extractReadableContent, renderSegmentOverlay]);
 
   const togglePlayPause = useCallback(() => {
-    if (!elementsRef.current.length) extractReadableContent();
-    if (!elementsRef.current.length) return;
+    if (!segmentsRef.current.length) extractReadableContent();
+    if (!segmentsRef.current.length) return;
 
     if (isPlaying && !isPaused) {
       speechSessionRef.current += 1;
       window.speechSynthesis.cancel();
-      clearSentenceOverlay();
       setIsPaused(true);
       return;
     }
 
     if (isPlaying && isPaused) {
-      speakAtIndex(currentIndexRef.current);
+      speakAtSegment(currentSegmentIndexRef.current, currentCharOffsetRef.current, false);
       return;
     }
 
-    speakAtIndex(currentIndexRef.current);
-  }, [clearSentenceOverlay, extractReadableContent, isPaused, isPlaying, speakAtIndex]);
+    speakAtSegment(currentSegmentIndexRef.current, currentCharOffsetRef.current, true);
+  }, [extractReadableContent, isPaused, isPlaying, speakAtSegment]);
+
+  useEffect(() => {
+    if (!isPlaying || isPaused) return;
+    if (!segmentsRef.current.length) return;
+
+    // Apply new speed immediately from current sentence progress.
+    speakAtSegment(currentSegmentIndexRef.current, currentCharOffsetRef.current, false);
+  }, [readingSpeed, isPlaying, isPaused, speakAtSegment]);
 
   const next = useCallback(() => {
-    if (!elementsRef.current.length) extractReadableContent();
-    if (!elementsRef.current.length) return;
+    if (!segmentsRef.current.length) extractReadableContent();
+    if (!segmentsRef.current.length) return;
 
-    speakAtIndex(currentIndexRef.current + 1);
-  }, [extractReadableContent, speakAtIndex]);
+    const nextIndex = findAdjacentSegment(currentSegmentIndexRef.current, 1);
+    if (nextIndex === -1) return;
+    speakAtSegment(nextIndex, 0, true);
+  }, [extractReadableContent, findAdjacentSegment, speakAtSegment]);
 
   const prev = useCallback(() => {
-    if (!elementsRef.current.length) extractReadableContent();
-    if (!elementsRef.current.length) return;
+    if (!segmentsRef.current.length) extractReadableContent();
+    if (!segmentsRef.current.length) return;
 
-    speakAtIndex(currentIndexRef.current - 1);
-  }, [extractReadableContent, speakAtIndex]);
+    const prevIndex = findAdjacentSegment(currentSegmentIndexRef.current, -1);
+    if (prevIndex === -1) return;
+    speakAtSegment(prevIndex, 0, true);
+  }, [extractReadableContent, findAdjacentSegment, speakAtSegment]);
 
   return { isPlaying, isPaused, togglePlayPause, next, prev };
 }
