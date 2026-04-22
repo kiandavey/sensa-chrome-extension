@@ -12,6 +12,7 @@ import CaptionTransparencyOverlay from "./components/CaptionTransparencyOverlay"
 import FocusModeOverlay from "./components/FocusModeOverlay"
 import type { SensaUserProfile } from "./lib/storage"
 import { useSpeech } from "./hooks/useSpeech"
+import { useVoiceNavigation } from "./hooks/useVoiceNavigation"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"]
@@ -40,6 +41,7 @@ export default function FloatingDockManager() {
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [isReadingSpeedOpen, setIsReadingSpeedOpen] = useState(false)
   const [readingSpeed, setReadingSpeed] = useState(1)
+  const [isVoiceCommandActive, setIsVoiceCommandActive] = useState(false)
   
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -57,7 +59,8 @@ export default function FloatingDockManager() {
     isReadingSpeedOpen
 
   const [highlightColor, setHighlightColor] = useState("#FFFE00")
-  const { isPlaying, isPaused, togglePlayPause, next, prev } = useSpeech(readingSpeed, highlightColor, isSettingsOverlayOpen)
+  const { isPlaying, isPaused, togglePlayPause, next, prev, restart } = useSpeech(readingSpeed, highlightColor, isSettingsOverlayOpen)
+  const { lastCommand } = useVoiceNavigation(isVoiceCommandActive)
 
   useEffect(() => {
     activeModeRef.current = activeMode
@@ -118,6 +121,7 @@ export default function FloatingDockManager() {
       if (message.mode === "auditory") {
         setIsVisualSettingsOpen(false)
         setIsReadingSpeedOpen(false)
+        setIsVoiceCommandActive(false)
       }
       if (message.mode === null) {
         setIsVisualSettingsOpen(false)
@@ -126,6 +130,7 @@ export default function FloatingDockManager() {
         setIsTextSizeOpen(false)
         setIsCaptionTransparencyOpen(false)
         setIsReadingSpeedOpen(false)
+        setIsVoiceCommandActive(false)
       }
     }
 
@@ -137,10 +142,13 @@ export default function FloatingDockManager() {
           setIsCaptionLanguageOpen(false)
           setIsTextSizeOpen(false)
           setIsCaptionTransparencyOpen(false)
-        } else if (activeModeRef.current === "visual") {
-          setActiveMode(null)
-          setIsVisualSettingsOpen(false)
-          setIsReadingSpeedOpen(false)
+        } else {
+          if (activeModeRef.current === "visual") {
+            setActiveMode(null)
+            setIsVisualSettingsOpen(false)
+            setIsReadingSpeedOpen(false)
+          }
+          setIsVoiceCommandActive(false)
         }
         if (changes.sensa_visual_highlight_color !== undefined) {
           setHighlightColor(changes.sensa_visual_highlight_color.newValue)
@@ -151,6 +159,7 @@ export default function FloatingDockManager() {
           setActiveMode("auditory")
           setIsVisualSettingsOpen(false)
           setIsReadingSpeedOpen(false)
+          setIsVoiceCommandActive(false)
         } else if (activeModeRef.current === "auditory") {
           setActiveMode(null)
           setIsAuditorySettingsOpen(false)
@@ -302,9 +311,13 @@ export default function FloatingDockManager() {
             readingSpeed={readingSpeed}
             isPlaying={isPlaying}            // <-- NEW PROP
             isPaused={isPaused}              // <-- NEW PROP
+            isVoiceCommandActive={isVoiceCommandActive}
+            canRestart={isPlaying || isPaused}
             onTogglePlay={togglePlayPause}   // <-- NEW PROP
+            onToggleVoiceCommand={() => setIsVoiceCommandActive(prev => !prev)}
             onNext={next}                    // <-- NEW PROP
             onPrev={prev}                    // <-- NEW PROP
+            onRestart={restart}
             onMinimizeToggle={() => setIsMinimized(!isMinimized)} 
             onOpenReadingSpeed={() => setIsReadingSpeedOpen(true)}
             onOpenSettings={() => setIsVisualSettingsOpen(true)} 

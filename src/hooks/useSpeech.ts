@@ -207,6 +207,7 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
   const currentSegmentIndexRef = useRef(0);
   const currentCharOffsetRef = useRef(0);
   const speechSessionRef = useRef(0);
+  const isOverlaySuppressedRef = useRef(isOverlaySuppressed);
 
   const sentenceOverlayRootRef = useRef<HTMLDivElement | null>(null);
 
@@ -283,6 +284,8 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
   );
 
   useEffect(() => {
+    isOverlaySuppressedRef.current = isOverlaySuppressed;
+
     if (isOverlaySuppressed) {
       clearSentenceOverlay();
     } else {
@@ -363,7 +366,11 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
       currentCharOffsetRef.current = safeStartOffset;
 
       window.speechSynthesis.cancel();
-      renderSegmentOverlay(segment);
+      if (isOverlaySuppressedRef.current) {
+        clearSentenceOverlay();
+      } else {
+        renderSegmentOverlay(segment);
+      }
       if (shouldScroll) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
       }
@@ -441,6 +448,11 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
     document.body.appendChild(overlayRoot);
 
     const repaintActiveSentence = () => {
+      if (isOverlaySuppressedRef.current) {
+        clearSentenceOverlay();
+        return;
+      }
+
       const segment = segmentsRef.current[currentSegmentIndexRef.current];
       if (!segment) return;
       renderSegmentOverlay(segment);
@@ -510,5 +522,12 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
     speakAtSegment(prevIndex, 0, true);
   }, [extractReadableContent, findAdjacentSegment, speakAtSegment]);
 
-  return { isPlaying, isPaused, togglePlayPause, next, prev };
+  const restart = useCallback(() => {
+    if (!segmentsRef.current.length) extractReadableContent();
+    if (!segmentsRef.current.length) return;
+
+    speakAtSegment(0, 0, true);
+  }, [extractReadableContent, speakAtSegment]);
+
+  return { isPlaying, isPaused, togglePlayPause, next, prev, restart };
 }

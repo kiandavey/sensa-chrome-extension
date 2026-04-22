@@ -1,14 +1,20 @@
 import React, { useState } from "react"
 import ColorPickerPopup from "./ColorPickerPopup"
+import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
 
 interface VisualSettingsModalProps {
   onClose: () => void
 }
 
 export default function VisualSettingsModal({ onClose }: VisualSettingsModalProps) {
+  const { playHoverAudio, cancelHoverAudio } = useUIHoverAudio()
   // State to track if the color picker bubble is visible
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [highlightColor, setHighlightColor] = useState("#FFFE00")
+  const getHoverHandlers = (label: string) => ({
+    onMouseEnter: () => playHoverAudio(label),
+    onMouseLeave: cancelHoverAudio
+  })
 
   React.useEffect(() => {
     chrome.storage.local.get(["sensa_visual_highlight_color"], (res) => {
@@ -40,6 +46,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
         <button 
           onClick={onClose}
           className="absolute top-6 right-6 text-black hover:text-gray-500 transition-colors focus:outline-none"
+          {...getHoverHandlers("Close")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -54,7 +61,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Voice Guide</span>
             <div className="w-[190px] flex justify-start pl-1">
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex items-center cursor-pointer" {...getHoverHandlers("Voice Guide")}>
                 <input type="checkbox" className="sr-only peer" defaultChecked />
                 {/* Adjusted the after:translate-x to move the circle further right */}
                 <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[26px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3B82F6]"></div>
@@ -66,7 +73,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Voice Selection</span>
             <div className="relative w-[190px]">
-              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-sm focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white">
+              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-sm focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white" {...getHoverHandlers("Voice Selection")}> 
                 <option>Google US English</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
@@ -83,6 +90,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
                 type="text" 
                 defaultValue="Sensa" 
                 className="w-full border border-gray-300 text-gray-700 py-2 pl-3 pr-8 rounded-xl text-sm focus:outline-none focus:border-[#3B82F6]"
+                {...getHoverHandlers("Wake Word")}
               />
               <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
@@ -105,6 +113,8 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
                 <button 
                   type="button"
                   onMouseDown={(event) => event.stopPropagation()}
+                  onMouseEnter={() => playHoverAudio("Highlight color")}
+                  onMouseLeave={cancelHoverAudio}
                   onClick={(event) => {
                     event.stopPropagation()
                     setShowColorPicker((prev) => !prev)
@@ -131,7 +141,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Autoscroll reading</span>
             <div className="w-[190px] flex justify-start pl-1">
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex items-center cursor-pointer" {...getHoverHandlers("Autoscroll reading")}>
                 <input type="checkbox" className="sr-only peer" defaultChecked />
                  {/* Adjusted the after:translate-x to move the circle further right */}
                 <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[26px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3B82F6]"></div>
@@ -143,7 +153,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Input Device</span>
             <div className="relative w-[190px]">
-              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white">
+              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white" {...getHoverHandlers("Input Device")}> 
                 <option>Default - Microphone</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
@@ -156,7 +166,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Output Device</span>
             <div className="relative w-[190px]">
-              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white">
+              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white" {...getHoverHandlers("Output Device")}> 
                 <option>Default - Speaker</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
@@ -169,7 +179,7 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
 
         {/* Footer Button */}
         <div className="mt-10 flex justify-center">
-          <button className="bg-[#4338CA] hover:bg-[#3730A3] text-white font-bold py-3 px-10 rounded-full transition-colors shadow-md text-sm">
+          <button className="bg-[#4338CA] hover:bg-[#3730A3] text-white font-bold py-3 px-10 rounded-full transition-colors shadow-md text-sm" {...getHoverHandlers("Reset to default")}>
             Reset to default
           </button>
         </div>

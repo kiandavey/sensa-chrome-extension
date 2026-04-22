@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+// @ts-expect-error CSS is bundled by Plasmo at build time.
 import "./style.css"
 import ModeSelection from "./components/ModeSelection"
 import WelcomeOverlay from "./components/WelcomeOverlay"

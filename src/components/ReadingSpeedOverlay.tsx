@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
 
 interface ReadingSpeedOverlayProps {
   onClose: () => void
@@ -8,6 +9,11 @@ interface ReadingSpeedOverlayProps {
 
 export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeedChange }: ReadingSpeedOverlayProps) {
   const [speed, setSpeed] = useState(initialSpeed)
+  const { playHoverAudio, cancelHoverAudio } = useUIHoverAudio()
+  const getHoverHandlers = (label: string) => ({
+    onMouseEnter: () => playHoverAudio(label),
+    onMouseLeave: cancelHoverAudio
+  })
 
   // Pre-defined speed stops for the pill buttons
   const speedStops = [1, 1.25, 1.5, 1.75, 2]
@@ -47,6 +53,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
         <button 
           onClick={onClose}
           className="absolute top-6 right-6 text-black hover:text-gray-500 transition-colors focus:outline-none"
+          {...getHoverHandlers("Close")}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -67,6 +74,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           <button 
             onClick={handleDecrease}
             className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-[#3B82F6] hover:bg-blue-600 text-white rounded-full transition-colors focus:outline-none shadow-md"
+            {...getHoverHandlers("Decrease speed")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -86,6 +94,8 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
                 onSpeedChange?.(parseFloat(e.target.value))
               }}
               className="reading-speed-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none"
+              onMouseEnter={() => playHoverAudio("Reading Speed")}
+              onMouseLeave={cancelHoverAudio}
               style={{
                 // Dynamically fill the track blue before the thumb
                 background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${((speed - 0.5) / (3 - 0.5)) * 100}%, #e5e7eb ${((speed - 0.5) / (3 - 0.5)) * 100}%, #e5e7eb 100%)`
@@ -118,6 +128,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           <button 
             onClick={handleIncrease}
             className="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-[#3B82F6] hover:bg-blue-600 text-white rounded-full transition-colors focus:outline-none shadow-md"
+            {...getHoverHandlers("Increase speed")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -135,6 +146,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
                 setSpeed(stop)
                 onSpeedChange?.(stop)
               }}
+              {...getHoverHandlers(`${stop}x`) }
               className={`flex-1 py-2 rounded-full text-[15px] font-bold transition-all duration-200 ${
                 speed === stop 
                   ? "bg-[#3B82F6] text-white shadow-md scale-105" 
@@ -150,6 +162,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-full border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+            {...getHoverHandlers("Cancel")}
           >
             Cancel
           </button>
@@ -159,6 +172,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
               onClose()
             }}
             className="px-5 py-2 rounded-full bg-[#3B82F6] text-sm font-semibold text-white hover:bg-blue-600 transition-colors"
+            {...getHoverHandlers("Apply")}
           >
             Apply
           </button>
