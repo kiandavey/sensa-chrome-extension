@@ -10,9 +10,11 @@ import CaptionLanguageOverlay from "./components/CaptionLanguageOverlay"
 import TextSizeOverlay from "./components/TextSizeOverlay"
 import CaptionTransparencyOverlay from "./components/CaptionTransparencyOverlay"
 import FocusModeOverlay from "./components/FocusModeOverlay"
+import LiveCaptionBox from "./components/LiveCaptionBox"
 import type { SensaUserProfile } from "./lib/storage"
 import { useSpeech } from "./hooks/useSpeech"
 import { useVoiceNavigation } from "./hooks/useVoiceNavigation"
+import { useLiveCaptions } from "./hooks/useLiveCaptions"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"]
@@ -39,6 +41,7 @@ export default function FloatingDockManager() {
   const [textSize, setTextSize] = useState(32)
   const [captionTransparency, setCaptionTransparency] = useState(75)
   const [isFocusMode, setIsFocusMode] = useState(false)
+  const [isCaptionsActive, setIsCaptionsActive] = useState(false)
   const [isReadingSpeedOpen, setIsReadingSpeedOpen] = useState(false)
   const [readingSpeed, setReadingSpeed] = useState(1)
   const [isVoiceCommandActive, setIsVoiceCommandActive] = useState(false)
@@ -57,10 +60,16 @@ export default function FloatingDockManager() {
     isTextSizeOpen ||
     isCaptionTransparencyOpen ||
     isReadingSpeedOpen
+  const isAuditoryModeActive = activeMode === "auditory"
 
   const [highlightColor, setHighlightColor] = useState("#FFFE00")
   const { isPlaying, isPaused, togglePlayPause, next, prev, restart } = useSpeech(readingSpeed, highlightColor, isSettingsOverlayOpen)
   const { lastCommand } = useVoiceNavigation(isVoiceCommandActive)
+  const targetLanguage = (captionLanguage.split("-")[0] ?? "EN").toUpperCase()
+  const { captions, error: captionsError } = useLiveCaptions(
+    isAuditoryModeActive && isCaptionsActive,
+    targetLanguage
+  )
 
   useEffect(() => {
     activeModeRef.current = activeMode
@@ -117,6 +126,7 @@ export default function FloatingDockManager() {
         setIsCaptionLanguageOpen(false)
         setIsTextSizeOpen(false)
         setIsCaptionTransparencyOpen(false)
+        setIsCaptionsActive(false)
       }
       if (message.mode === "auditory") {
         setIsVisualSettingsOpen(false)
@@ -131,6 +141,7 @@ export default function FloatingDockManager() {
         setIsCaptionTransparencyOpen(false)
         setIsReadingSpeedOpen(false)
         setIsVoiceCommandActive(false)
+        setIsCaptionsActive(false)
       }
     }
 
@@ -166,6 +177,7 @@ export default function FloatingDockManager() {
           setIsCaptionLanguageOpen(false)
           setIsTextSizeOpen(false)
           setIsCaptionTransparencyOpen(false)
+          setIsCaptionsActive(false)
         }
       }
       if (changes.sensa_auditory_caption_language !== undefined && typeof changes.sensa_auditory_caption_language.newValue === "string") {
@@ -227,7 +239,7 @@ export default function FloatingDockManager() {
   if (!activeMode) return null
 
   const isVisualActive = activeMode === "visual"
-  const isAuditoryActive = activeMode === "auditory"
+  const isAuditoryActive = isAuditoryModeActive
   const isDark = isVisualActive ? false : userThemePref
 
   // Notice how the return now uses <> ... </> to group the Modal and the Dock separately
@@ -294,6 +306,16 @@ export default function FloatingDockManager() {
 
       {isAuditoryActive && isFocusMode && <FocusModeOverlay intensity={0.7} />}
 
+      {isAuditoryActive && isCaptionsActive && (
+        <LiveCaptionBox
+          captions={captions}
+          error={captionsError}
+          fontSize={textSize}
+          textColor="#FFFFFF"
+          bgColor={`rgba(0, 0, 0, ${Math.max(0.1, Math.min(1, captionTransparency / 100))})`}
+        />
+      )}
+
       {/* 2. THE DRAGGABLE DOCK */}
       <div
         ref={dragRef}
@@ -332,6 +354,8 @@ export default function FloatingDockManager() {
           <AuditoryDock 
             isDark={isDark} 
             isMinimized={isMinimized} 
+            isCaptionsActive={isCaptionsActive}
+            onToggleCaptions={() => setIsCaptionsActive((prev) => !prev)}
             onMinimizeToggle={() => setIsMinimized(!isMinimized)} 
             onOpenCaptionLanguage={() => setIsCaptionLanguageOpen(true)}
             onOpenTextSize={() => setIsTextSizeOpen(true)}
@@ -348,6 +372,7 @@ export default function FloatingDockManager() {
               setIsCaptionLanguageOpen(false)
               setIsTextSizeOpen(false)
               setIsCaptionTransparencyOpen(false)
+              setIsCaptionsActive(false)
             }} 
           />
         )}
