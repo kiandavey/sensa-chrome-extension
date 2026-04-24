@@ -1,92 +1,70 @@
 export interface STTConnection {
   socket: WebSocket | null
-  mediaRecorder: MediaRecorder | null
   close: () => void
 }
 
-export function setupSTTWebSocket(
+export function connectToLocalServer(
   mediaStream: MediaStream,
+  audioCtx: AudioContext,
   onTranscript: (text: string) => void
 ): STTConnection {
-  const DEEPGRAM_API_KEY = "e9820d72b678d0b7f709e2ceb7ce7260e488bf90" // <--- PASTE KEY HERE
+  const socket = new WebSocket("ws://localhost:3000")
 
   let isClosed = false
-
-  const mediaRecorder = new MediaRecorder(mediaStream, {
-    mimeType: "audio/webm;codecs=opus" 
-  })
-
-  const REAL_ENDPOINT = "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=true"
-  const socket = new WebSocket(REAL_ENDPOINT, ["token", DEEPGRAM_API_KEY])
+  let processor: ScriptProcessorNode | null = null
+  let audioEl: HTMLAudioElement | null = null
 
   socket.addEventListener("open", () => {
-    console.log("[useLiveCaptions] Deepgram connected! Starting media capture...")
-    mediaRecorder.start(250)
-  })
+    console.log("🔌 Connected to Local Node.js Server!")
 
-  mediaRecorder.addEventListener("dataavailable", async (event) => {
-    if (!event.data || event.data.size === 0 || isClosed) return
-    if (socket.readyState === WebSocket.OPEN) {
-      console.log(`[STT] Sending chunk: ${event.data.size} bytes`)
-      const arrayBuffer = await event.data.arrayBuffer()
-      socket.send(arrayBuffer)
+    // 1. STEALTH BYPASS: Play audio via HTML5 so you can actually hear it
+    audioEl = new Audio()
+    audioEl.srcObject = mediaStream
+    audioEl.play().catch(console.error)
+
+    // 2. Extract the data for Deepgram
+    const source = audioCtx.createMediaStreamSource(mediaStream)
+    processor = audioCtx.createScriptProcessor(4096, 1, 1)
+
+    // 3. MUTED GAIN NODE: This prevents Chrome from detecting a feedback loop!
+    const silentGain = audioCtx.createGain()
+    silentGain.gain.value = 0 
+
+    source.connect(processor)
+    processor.connect(silentGain)
+    silentGain.connect(audioCtx.destination)
+
+    // 4. Send the PCM data to the Node Server
+    processor.onaudioprocess = (e) => {
+      if (isClosed || socket.readyState !== WebSocket.OPEN) return
+      const float32Array = e.inputBuffer.getChannelData(0)
+      const int16Array = new Int16Array(float32Array.length)
+      for (let i = 0; i < float32Array.length; i++) {
+        let s = Math.max(-1, Math.min(1, float32Array[i]))
+        int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+      }
+      socket.send(int16Array.buffer)
     }
   })
 
   socket.addEventListener("message", (event) => {
     try {
-      const payload = JSON.parse(event.data as string)
-      if (payload.type === "Metadata") return
-
-      // See exactly what Deepgram returns:
-      console.log("[Deepgram Raw]:", payload)
-
-      const transcript = payload?.channel?.alternatives?.[0]?.transcript ?? ""
-      const isFinal = payload?.is_final
-
-      if (typeof transcript === "string" && transcript.trim() && isFinal) {
-        onTranscript(transcript.trim())
+      const payload = JSON.parse(event.data)
+      if (payload.type === "TRANSCRIPT" && payload.text) {
+        onTranscript(payload.text)
       }
-    } catch {
-      // Ignore
-    }
+    } catch (err) {}
   })
 
-  socket.addEventListener("error", (event) => {
-    console.error("[useLiveCaptions] Deepgram WebSocket error:", event)
-  })
-
-  socket.addEventListener("close", (event) => {
-    console.warn(`[useLiveCaptions] Deepgram closed. Code: ${event.code}. Reason: ${event.reason}`)
-  })
-
+  socket.addEventListener("error", () => console.error("Local WS Error"))
+  
   return {
     socket,
-    mediaRecorder,
     close: () => {
       isClosed = true
-      if (mediaRecorder.state !== "inactive") mediaRecorder.stop()
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-        socket.close()
-      }
+      if (processor) processor.disconnect()
+      if (audioEl) { audioEl.pause(); audioEl.srcObject = null }
+      if (socket.readyState === WebSocket.OPEN) socket.close()
     }
   }
-}
-
-export async function translateText(text: string, targetLang: string): Promise<string> {
-  if (!text.trim()) {
-    return ""
-  }
-
-  const response = (await chrome.runtime.sendMessage({
-    type: "TRANSLATE_TEXT",
-    text,
-    targetLang
-  })) as { ok?: boolean; translated?: string; error?: string }
-
-  if (!response?.ok || typeof response.translated !== "string") {
-    throw new Error(response?.error ?? "DeepL translation failed.")
-  }
-
-  return response.translated
 }
