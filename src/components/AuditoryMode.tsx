@@ -30,7 +30,11 @@ export default function AuditoryMode({ isDark }: AuditoryModeProps) {
     const newState = !isCapturing
     setIsCapturing(newState)
     chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: newState ? "auditory" : null })
-    chrome.storage.local.set({ sensa_auditory_active: newState })
+    chrome.storage.local.set({
+      sensa_auditory_active: newState,
+      // Enforce single active mode: turning auditory on must turn visual off.
+      ...(newState ? { sensa_visual_active: false } : {})
+    })
   }
 
   return (

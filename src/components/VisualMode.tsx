@@ -25,7 +25,11 @@ export default function VisualMode() {
   const handleToggle = () => {
     const newState = !isListening
     chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: newState ? "visual" : null })
-    chrome.storage.local.set({ sensa_visual_active: newState })
+    chrome.storage.local.set({
+      sensa_visual_active: newState,
+      // Enforce single active mode: turning visual on must turn auditory off.
+      ...(newState ? { sensa_auditory_active: false } : {})
+    })
   }
 
   return (

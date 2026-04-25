@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import sensaLogo from "data-base64:../../assets/sensa-logo.png"
 import VisualMode from "./VisualMode"
 import AuditoryMode from "./AuditoryMode"
@@ -13,6 +13,8 @@ interface DashboardProps {
 
 export default function Dashboard({ selectedMode, theme, onModeChange, onThemeChange, onReset }: DashboardProps) {
   const [currentViewMode, setCurrentViewMode] = useState<"visual" | "auditory">("visual")
+  const [isUserSwitchAnimating, setIsUserSwitchAnimating] = useState(false)
+  const animationTimeoutRef = useRef<number | null>(null)
 
   // --- AUTO-SAVE LOGIC ---
   // 1. Load the last visited tab when the popup opens
@@ -29,17 +31,40 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
   // 2. Save the tab to the database every time you click the switch
   const handleViewSwap = (newMode: "visual" | "auditory") => {
     if (newMode === currentViewMode) return
+    setIsUserSwitchAnimating(true)
+    if (animationTimeoutRef.current !== null) {
+      window.clearTimeout(animationTimeoutRef.current)
+    }
+    animationTimeoutRef.current = window.setTimeout(() => {
+      setIsUserSwitchAnimating(false)
+      animationTimeoutRef.current = null
+    }, 520)
     setCurrentViewMode(newMode)
-    chrome.storage.local.set({ sensa_last_tab: newMode }) // Instant Auto-Save
+    // Tab switch is navigation only: deactivate running mode(s), do not auto-activate target mode.
+    chrome.storage.local.set({
+      sensa_last_tab: newMode,
+      sensa_visual_active: false,
+      sensa_auditory_active: false
+    })
+    chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: null })
     onModeChange(newMode)
   }
+
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current !== null) {
+        window.clearTimeout(animationTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Enforce Visual Mode scope: Always Light Mode
   const isAuditory = currentViewMode === "auditory"
   const isDark = isAuditory ? theme === "dark" : false
+  const modeTransitionClass = isUserSwitchAnimating ? "transition-colors duration-500" : "transition-none duration-0"
 
   return (
-    <div className={`w-[350px] h-[550px] flex flex-col font-sans relative overflow-hidden transition-colors duration-500 ease-in-out ${isDark ? 'bg-gray-950 text-gray-200' : 'bg-white text-black'}`}>
+    <div className={`w-[350px] h-[550px] flex flex-col font-sans relative overflow-hidden ${modeTransitionClass} ease-in-out ${isDark ? 'bg-gray-950 text-gray-200' : 'bg-white text-black'}`}>
       
       {/* --- NAVBAR --- */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2 z-20">
@@ -88,34 +113,33 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
 
       {/* --- DYNAMIC MODE SWITCHER PILL --- */}
       <div className="px-6 flex justify-center mb-4 z-20 mt-2">
-        <div className={`relative flex w-[85%] h-11 rounded-full p-[3px] border-2 transition-colors duration-500 
+        <div className={`relative flex w-[85%] h-11 rounded-full p-[3px] border-2 ${modeTransitionClass}
           ${isAuditory ? (isDark ? 'bg-gray-900 border-[#FF7A2F]' : 'bg-white border-[#FF7A2F]') : 'bg-white border-[#3B82F6]'}`}
         >
           <div
-            className={`absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-full transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-sm
+            className={`absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-full ${isUserSwitchAnimating ? "transition-all duration-500" : "transition-none duration-0"} ease-[cubic-bezier(0.4,0,0.2,1)] shadow-sm
               ${isAuditory ? 'translate-x-[100%] bg-[#FF7A2F]' : 'translate-x-0 bg-[#3B82F6]'}`}
           />
           <button
             onClick={() => handleViewSwap("visual")}
-            className={`flex-1 relative z-10 font-bold text-sm transition-colors duration-300 focus:outline-none ${!isAuditory ? 'text-white' : (isDark ? 'text-gray-300' : 'text-black')}`}
+            className={`flex-1 relative z-10 font-bold text-sm ${isUserSwitchAnimating ? "transition-colors duration-300" : "transition-none duration-0"} focus:outline-none ${!isAuditory ? 'text-white' : (isDark ? 'text-gray-300' : 'text-black')}`}
           >
             Visual
           </button>
           <button
             onClick={() => handleViewSwap("auditory")}
-            className={`flex-1 relative z-10 font-bold text-sm transition-colors duration-300 focus:outline-none ${isAuditory ? 'text-white' : 'text-black'}`}
+            className={`flex-1 relative z-10 font-bold text-sm ${isUserSwitchAnimating ? "transition-colors duration-300" : "transition-none duration-0"} focus:outline-none ${isAuditory ? 'text-white' : 'text-black'}`}
           >
             Auditory
           </button>
         </div>
       </div>
 
-      {/* --- FLEX SLIDER --- */}
+      {/* --- FLEX SLIDER (NO STARTUP ANIMATION, YES TOGGLE ANIMATION) --- */}
       <div className="flex-1 w-full relative overflow-hidden">
         <div
-          className="absolute top-0 left-0 w-[200%] h-full flex transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
-          style={{ transform: isAuditory ? 'translateX(-50%)' : 'translateX(0)' }}
-        >
+          className={`absolute top-0 left-0 w-[200%] h-full flex ${isUserSwitchAnimating ? "transition-transform duration-500" : "transition-none duration-0"} ease-[cubic-bezier(0.4,0,0.2,1)]`}
+          style={{ transform: isAuditory ? "translateX(-50%)" : "translateX(0)" }}>
           <div className="w-1/2 h-full flex shrink-0">
             <VisualMode />
           </div>
@@ -127,10 +151,10 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
 
       {/* --- FOOTER --- */}
       <div className="px-6 flex flex-col items-center gap-2 mt-auto pb-4 z-20">
-        <p className={`text-sm font-bold transition-colors duration-500 ${isAuditory ? 'text-[#FF7A2F]' : 'text-[#3B82F6]'}`}>
+        <p className={`text-sm font-bold ${modeTransitionClass} ${isAuditory ? 'text-[#FF7A2F]' : 'text-[#3B82F6]'}`}>
           Website: <span className={`font-normal ml-1 ${isDark ? 'text-gray-300' : 'text-black'}`}>Google.com</span>
         </p>
-        <p className={`text-sm font-bold flex items-center justify-center transition-colors duration-500 ${isAuditory ? 'text-[#FF7A2F]' : 'text-[#3B82F6]'}`}>
+        <p className={`text-sm font-bold flex items-center justify-center ${modeTransitionClass} ${isAuditory ? 'text-[#FF7A2F]' : 'text-[#3B82F6]'}`}>
           Extension Status: 
           <span className={`font-normal ml-2 flex items-center ${isDark ? 'text-green-500' : 'text-green-600'}`}>
             Online <span className={`inline-block w-2.5 h-2.5 rounded-full ml-1.5 ${isDark ? 'bg-green-500' : 'bg-green-600'}`}></span>
@@ -141,7 +165,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
       <div className="px-6 pb-6 pt-1 z-20">
         <button 
           onClick={onReset}
-          className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors duration-500 focus:outline-none
+          className={`w-full py-2 rounded-lg text-xs font-semibold ${modeTransitionClass} focus:outline-none
             ${isDark ? 'bg-gray-800 text-gray-500 hover:bg-gray-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
         >
           Switch Accessibility Mode (Dev)
