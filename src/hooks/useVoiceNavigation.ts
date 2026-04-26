@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 
-export function useVoiceNavigation(isActive: boolean) {
+export function useVoiceNavigation(isActive: boolean, preferredInputDeviceId = "default") {
   const [lastCommand, setLastCommand] = useState("")
   const recognitionRef = useRef<any>(null)
   const isActiveRef = useRef(isActive)
   const lastCommandAtRef = useRef(0)
   const restartTimerRef = useRef<number | null>(null)
+  const inputStreamRef = useRef<MediaStream | null>(null)
 
   const COMMAND_COOLDOWN_MS = 700
 
@@ -29,8 +30,25 @@ export function useVoiceNavigation(isActive: boolean) {
       }
       recognitionRef.current?.stop()
       recognitionRef.current = null
+      if (inputStreamRef.current) {
+        inputStreamRef.current.getTracks().forEach((track) => track.stop())
+        inputStreamRef.current = null
+      }
       return
     }
+    const ensurePreferredInputStream = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) return
+      if (!preferredInputDeviceId || preferredInputDeviceId === "default") return
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: preferredInputDeviceId } }
+        })
+        inputStreamRef.current = stream
+      } catch (error) {
+        console.warn("Unable to access preferred input device, falling back to browser default mic.", error)
+      }
+    }
+
 
     const recognition = new SpeechRecognitionCtor()
     recognitionRef.current = recognition
@@ -119,11 +137,14 @@ export function useVoiceNavigation(isActive: boolean) {
       scheduleRestart(120)
     }
 
-    try {
-      recognition.start()
-    } catch (error) {
-      console.error("Unable to start speech recognition:", error)
-    }
+    ;(async () => {
+      await ensurePreferredInputStream()
+      try {
+        recognition.start()
+      } catch (error) {
+        console.error("Unable to start speech recognition:", error)
+      }
+    })()
 
     // Cleanup when component unmounts
     return () => {
@@ -137,11 +158,15 @@ export function useVoiceNavigation(isActive: boolean) {
       try {
         recognition.stop()
       } catch (e) {}
+      if (inputStreamRef.current) {
+        inputStreamRef.current.getTracks().forEach((track) => track.stop())
+        inputStreamRef.current = null
+      }
       if (recognitionRef.current === recognition) {
         recognitionRef.current = null
       }
     }
-  }, [isActive])
+  }, [isActive, preferredInputDeviceId])
 
   return { lastCommand }
 }

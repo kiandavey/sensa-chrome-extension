@@ -198,7 +198,7 @@ const splitSentenceRanges = (text: string) => {
   return ranges;
 };
 
-export function useSpeech(readingSpeed: number, highlightColor: string, isOverlaySuppressed = false) {
+export function useSpeech(readingSpeed: number, highlightColor: string, isOverlaySuppressed = false, isAutoscrollEnabled = true) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -379,7 +379,7 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
       } else {
         renderSegmentOverlay(segment);
       }
-      if (shouldScroll) {
+      if (shouldScroll && isAutoscrollEnabled) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
@@ -432,7 +432,7 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
 
       window.speechSynthesis.speak(utterance);
     },
-    [clearSentenceOverlay, findAdjacentSegment, readingSpeed, renderSegmentOverlay]
+    [clearSentenceOverlay, findAdjacentSegment, isAutoscrollEnabled, readingSpeed, renderSegmentOverlay]
   );
 
   useEffect(() => {
@@ -494,6 +494,13 @@ export function useSpeech(readingSpeed: number, highlightColor: string, isOverla
       clearSentenceOverlay();
     }
   }, [clearSentenceOverlay, isPlaying]);
+
+  useEffect(() => {
+    if (!isPlaying || isOverlaySuppressedRef.current) return;
+    const segment = segmentsRef.current[currentSegmentIndexRef.current];
+    if (!segment) return;
+    renderSegmentOverlay(segment);
+  }, [highlightColor, isPlaying, renderSegmentOverlay]);
 
   const togglePlayPause = useCallback(() => {
     if (!segmentsRef.current.length) extractReadableContent();

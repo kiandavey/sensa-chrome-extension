@@ -11,22 +11,74 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
   // State to track if the color picker bubble is visible
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [highlightColor, setHighlightColor] = useState("#FFFE00")
+  const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([])
+  const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedInputDeviceId, setSelectedInputDeviceId] = useState("default")
+  const [selectedOutputDeviceId, setSelectedOutputDeviceId] = useState("default")
+  const [isAutoscrollEnabled, setIsAutoscrollEnabled] = useState(true)
   const getHoverHandlers = (label: string) => ({
     onMouseEnter: () => playHoverAudio(label),
     onMouseLeave: cancelHoverAudio
   })
 
   React.useEffect(() => {
-    chrome.storage.local.get(["sensa_visual_highlight_color"], (res) => {
+    chrome.storage.local.get(["sensa_visual_highlight_color", "sensa_visual_input_device_id", "sensa_visual_output_device_id", "sensa_visual_autoscroll_enabled"], (res) => {
       if (typeof res.sensa_visual_highlight_color === "string") {
         setHighlightColor(res.sensa_visual_highlight_color)
       }
+      if (typeof res.sensa_visual_input_device_id === "string") {
+        setSelectedInputDeviceId(res.sensa_visual_input_device_id)
+      }
+      if (typeof res.sensa_visual_output_device_id === "string") {
+        setSelectedOutputDeviceId(res.sensa_visual_output_device_id)
+      }
+      if (typeof res.sensa_visual_autoscroll_enabled === "boolean") {
+        setIsAutoscrollEnabled(res.sensa_visual_autoscroll_enabled)
+      }
     })
+  }, [])
+
+  React.useEffect(() => {
+    const loadDevices = async () => {
+      if (!navigator.mediaDevices?.enumerateDevices) return
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true })
+      } catch {
+        // Keep going: device labels may remain generic without permission.
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      setInputDevices(devices.filter((d) => d.kind === "audioinput"))
+      setOutputDevices(devices.filter((d) => d.kind === "audiooutput"))
+    }
+
+    loadDevices()
+    const handleDeviceChange = () => {
+      loadDevices()
+    }
+    navigator.mediaDevices?.addEventListener?.("devicechange", handleDeviceChange)
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.("devicechange", handleDeviceChange)
+    }
   }, [])
 
   const handleHighlightChange = (color: string) => {
     setHighlightColor(color)
     chrome.storage.local.set({ sensa_visual_highlight_color: color })
+  }
+
+  const handleInputDeviceChange = (deviceId: string) => {
+    setSelectedInputDeviceId(deviceId)
+    chrome.storage.local.set({ sensa_visual_input_device_id: deviceId })
+  }
+
+  const handleOutputDeviceChange = (deviceId: string) => {
+    setSelectedOutputDeviceId(deviceId)
+    chrome.storage.local.set({ sensa_visual_output_device_id: deviceId })
+  }
+
+  const handleAutoscrollToggle = (enabled: boolean) => {
+    setIsAutoscrollEnabled(enabled)
+    chrome.storage.local.set({ sensa_visual_autoscroll_enabled: enabled })
   }
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -142,7 +194,12 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
             <span className="text-[17px] font-medium">Autoscroll reading</span>
             <div className="w-[190px] flex justify-start pl-1">
               <label className="relative inline-flex items-center cursor-pointer" {...getHoverHandlers("Autoscroll reading")}>
-                <input type="checkbox" className="sr-only peer" defaultChecked />
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={isAutoscrollEnabled}
+                  onChange={(event) => handleAutoscrollToggle(event.target.checked)}
+                />
                  {/* Adjusted the after:translate-x to move the circle further right */}
                 <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[26px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3B82F6]"></div>
               </label>
@@ -153,8 +210,17 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Input Device</span>
             <div className="relative w-[190px]">
-              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white" {...getHoverHandlers("Input Device")}> 
-                <option>Default - Microphone</option>
+              <select
+                value={selectedInputDeviceId}
+                onChange={(event) => handleInputDeviceChange(event.target.value)}
+                className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white"
+                {...getHoverHandlers("Input Device")}>
+                <option value="default">Default - Microphone</option>
+                {inputDevices.map((device, index) => (
+                  <option key={device.deviceId || `input-${index}`} value={device.deviceId}>
+                    {device.label || `Microphone ${index + 1}`}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
                 <svg className="fill-current h-4 w-4" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -166,8 +232,17 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
           <div className="flex items-center justify-between">
             <span className="text-[17px] font-medium">Output Device</span>
             <div className="relative w-[190px]">
-              <select className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white" {...getHoverHandlers("Output Device")}> 
-                <option>Default - Speaker</option>
+              <select
+                value={selectedOutputDeviceId}
+                onChange={(event) => handleOutputDeviceChange(event.target.value)}
+                className="appearance-none w-full border border-gray-300 text-gray-700 py-2 px-3 rounded-xl text-xs focus:outline-none focus:border-[#3B82F6] cursor-pointer bg-white"
+                {...getHoverHandlers("Output Device")}>
+                <option value="default">Default - Speaker</option>
+                {outputDevices.map((device, index) => (
+                  <option key={device.deviceId || `output-${index}`} value={device.deviceId}>
+                    {device.label || `Speaker ${index + 1}`}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
                 <svg className="fill-current h-4 w-4" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>

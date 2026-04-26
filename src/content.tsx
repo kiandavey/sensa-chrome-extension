@@ -45,6 +45,8 @@ export default function FloatingDockManager() {
   const [isReadingSpeedOpen, setIsReadingSpeedOpen] = useState(false)
   const [readingSpeed, setReadingSpeed] = useState(1)
   const [isVoiceCommandActive, setIsVoiceCommandActive] = useState(false)
+  const [visualInputDeviceId, setVisualInputDeviceId] = useState("default")
+  const [isVisualAutoscrollEnabled, setIsVisualAutoscrollEnabled] = useState(true)
   
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -63,8 +65,13 @@ export default function FloatingDockManager() {
   const isAuditoryModeActive = activeMode === "auditory"
 
   const [highlightColor, setHighlightColor] = useState("#FFFE00")
-  const { isPlaying, isPaused, togglePlayPause, next, prev, restart } = useSpeech(readingSpeed, highlightColor, isSettingsOverlayOpen)
-  const { lastCommand } = useVoiceNavigation(isVoiceCommandActive)
+  const { isPlaying, isPaused, togglePlayPause, next, prev, restart } = useSpeech(
+    readingSpeed,
+    highlightColor,
+    isSettingsOverlayOpen,
+    isVisualAutoscrollEnabled
+  )
+  const { lastCommand } = useVoiceNavigation(isVoiceCommandActive, visualInputDeviceId)
   const targetLanguage = (captionLanguage.split("-")[0] ?? "EN").toUpperCase()
   const { captions, error: captionsError } = useLiveCaptions(
     isAuditoryModeActive && isCaptionsActive,
@@ -99,7 +106,7 @@ export default function FloatingDockManager() {
 
   // --- THE BRIDGE ---
   useEffect(() => {
-    chrome.storage.local.get(["sensa_visual_active", "sensa_auditory_active", "sensa_user_profile", "sensa_visual_reading_speed", "sensa_auditory_caption_language", "sensa_auditory_text_size", "sensa_auditory_caption_transparency", "sensa_auditory_focus_mode"], (res) => {
+    chrome.storage.local.get(["sensa_visual_active", "sensa_auditory_active", "sensa_user_profile", "sensa_visual_reading_speed", "sensa_visual_highlight_color", "sensa_visual_input_device_id", "sensa_visual_autoscroll_enabled", "sensa_auditory_caption_language", "sensa_auditory_text_size", "sensa_auditory_caption_transparency", "sensa_auditory_focus_mode"], (res) => {
       const storedMode = res.sensa_visual_active ? "visual" : res.sensa_auditory_active ? "auditory" : null
       setActiveMode(storedMode)
       if (res.sensa_user_profile?.globalSettings?.theme === "dark") setUserThemePref(true)
@@ -114,6 +121,12 @@ export default function FloatingDockManager() {
         setReadingSpeed(res.sensa_visual_reading_speed)
       } else if (typeof res.sensa_user_profile?.visualState?.readingSpeed === "number") {
         setReadingSpeed(res.sensa_user_profile.visualState.readingSpeed)
+      }
+      if (typeof res.sensa_visual_input_device_id === "string") {
+        setVisualInputDeviceId(res.sensa_visual_input_device_id)
+      }
+      if (typeof res.sensa_visual_autoscroll_enabled === "boolean") {
+        setIsVisualAutoscrollEnabled(res.sensa_visual_autoscroll_enabled)
       }
     })
 
@@ -161,9 +174,9 @@ export default function FloatingDockManager() {
           }
           setIsVoiceCommandActive(false)
         }
-        if (changes.sensa_visual_highlight_color !== undefined) {
-          setHighlightColor(changes.sensa_visual_highlight_color.newValue)
-        }
+      }
+      if (changes.sensa_visual_highlight_color !== undefined && typeof changes.sensa_visual_highlight_color.newValue === "string") {
+        setHighlightColor(changes.sensa_visual_highlight_color.newValue)
       }
       if (changes.sensa_auditory_active !== undefined) {
         if (changes.sensa_auditory_active.newValue) {
@@ -198,6 +211,12 @@ export default function FloatingDockManager() {
       }
       if (changes.sensa_visual_reading_speed !== undefined && typeof changes.sensa_visual_reading_speed.newValue === "number") {
         setReadingSpeed(changes.sensa_visual_reading_speed.newValue)
+      }
+      if (changes.sensa_visual_input_device_id !== undefined && typeof changes.sensa_visual_input_device_id.newValue === "string") {
+        setVisualInputDeviceId(changes.sensa_visual_input_device_id.newValue)
+      }
+      if (changes.sensa_visual_autoscroll_enabled !== undefined && typeof changes.sensa_visual_autoscroll_enabled.newValue === "boolean") {
+        setIsVisualAutoscrollEnabled(changes.sensa_visual_autoscroll_enabled.newValue)
       }
     }
 
