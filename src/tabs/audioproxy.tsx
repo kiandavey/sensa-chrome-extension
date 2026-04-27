@@ -6,12 +6,52 @@ export default function AudioProxy() {
     let processor: ScriptProcessorNode | null = null
     let audioCtx: AudioContext | null = null
     let audioEl: HTMLAudioElement | null = null
+    let currentTargetLang = "EN"
+
+    const stopCapture = () => {
+      try {
+        if (processor) {
+          processor.disconnect()
+          processor.onaudioprocess = null
+          processor = null
+        }
+
+        if (audioCtx) {
+          audioCtx.close().catch(() => {})
+          audioCtx = null
+        }
+
+        if (audioEl) {
+          const stream = audioEl.srcObject as MediaStream | null
+          stream?.getTracks().forEach((track) => track.stop())
+          audioEl.pause()
+          audioEl.srcObject = null
+          audioEl = null
+        }
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close()
+        }
+        socket = null
+      } catch (err) {
+        console.error("Failed to stop offscreen capture cleanly:", err)
+      }
+    }
 
     const handleMessage = async (msg: any) => {
+      if (msg.type === "STOP_OFFSCREEN_CAPTURE") {
+        stopCapture()
+        return
+      }
+
       if (msg.type === "EXECUTE_OFFSCREEN_CAPTURE") {
         const { streamId, targetLang, targetTabId } = msg
+        currentTargetLang = targetLang || "EN"
 
         try {
+          // Restart cleanly if a previous capture session exists.
+          stopCapture()
+
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: { mandatory: { chromeMediaSource: "tab", chromeMediaSourceId: streamId } } as any
           })
@@ -59,7 +99,7 @@ export default function AudioProxy() {
 
                 // Request translation
                 chrome.runtime.sendMessage(
-                  { type: "TRANSLATE_TEXT", text: rawText, targetLang },
+                  { type: "TRANSLATE_TEXT", text: rawText, targetLang: currentTargetLang },
                   (res) => {
                     if (res?.ok && res.translated && res.translated !== rawText) {
                       // 🚨 THE BRIDGE: Hand the translated text to the Background Worker to deliver!
@@ -78,10 +118,17 @@ export default function AudioProxy() {
           console.error("Offscreen capture failed:", err)
         }
       }
+
+      if (msg.type === "UPDATE_CAPTION_LANGUAGE_OFFSCREEN") {
+        currentTargetLang = msg.targetLang || "EN"
+      }
     }
 
     chrome.runtime.onMessage.addListener(handleMessage)
-    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
+      stopCapture()
+    }
   }, [])
 
   return <div>Sensa Offscreen Audio Relay</div>

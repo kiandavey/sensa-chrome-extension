@@ -11,6 +11,16 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
 	const [fontSize, setFontSize] = useState(initialSize)
 	const [sizeInput, setSizeInput] = useState(String(initialSize))
 
+	const clampSize = (value: number) => Math.min(72, Math.max(12, value))
+
+	const commitSize = (value: number) => {
+		const normalized = clampSize(value)
+		setFontSize(normalized)
+		setSizeInput(String(normalized))
+		onSizeChange?.(normalized)
+		return normalized
+	}
+
 	useEffect(() => {
 		setFontSize(initialSize)
 		setSizeInput(String(initialSize))
@@ -21,19 +31,11 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
 	}
 
 	const decrease = () => {
-		setFontSize((prev) => {
-			const next = Math.max(12, prev - 2)
-			setSizeInput(String(next))
-			return next
-		})
+		commitSize(fontSize - 2)
 	}
 
 	const increase = () => {
-		setFontSize((prev) => {
-			const next = Math.min(72, prev + 2)
-			setSizeInput(String(next))
-			return next
-		})
+		commitSize(fontSize + 2)
 	}
 
 	const handleInputChange = (value: string) => {
@@ -42,20 +44,16 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
 
 		setSizeInput(value)
 		if (value === "") return
-		setFontSize(Number.parseInt(value, 10))
+		commitSize(Number.parseInt(value, 10))
 	}
 
 	const normalizeInput = () => {
 		if (sizeInput === "") {
-			setFontSize(12)
-			setSizeInput("12")
+			commitSize(12)
 			return
 		}
 
-		const parsed = Number.parseInt(sizeInput, 10)
-		const normalized = Math.min(72, Math.max(12, parsed))
-		setFontSize(normalized)
-		setSizeInput(String(normalized))
+		commitSize(Number.parseInt(sizeInput, 10))
 	}
 
 	const panelClass = isDark
@@ -121,10 +119,6 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
 					<button
 						onClick={() => {
 							normalizeInput()
-							const normalized = sizeInput === ""
-								? 12
-								: Math.min(72, Math.max(12, Number.parseInt(sizeInput, 10)))
-							onSizeChange?.(normalized)
 							onClose()
 						}}
 						className="px-5 py-2 rounded-full bg-[#FF7A2F] text-sm font-semibold text-white hover:bg-[#F26A1B] transition-colors"

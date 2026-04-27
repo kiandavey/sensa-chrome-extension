@@ -17,6 +17,15 @@ export default function CaptionTransparencyOverlay({
 }: CaptionTransparencyOverlayProps) {
 	const [transparency, setTransparency] = useState(initialTransparency)
 
+	const clampTransparency = (value: number) => Math.min(100, Math.max(0, value))
+
+	const commitTransparency = (value: number) => {
+		const normalized = clampTransparency(value)
+		setTransparency(normalized)
+		onTransparencyChange?.(normalized)
+		return normalized
+	}
+
 	useEffect(() => {
 		setTransparency(initialTransparency)
 	}, [initialTransparency])
@@ -75,7 +84,7 @@ export default function CaptionTransparencyOverlay({
 					max="100"
 					step="1"
 					value={transparency}
-					onChange={(event) => setTransparency(Number.parseInt(event.target.value, 10))}
+					onChange={(event) => commitTransparency(Number.parseInt(event.target.value, 10))}
 					className="caption-opacity-slider w-full h-2.5 rounded-lg appearance-none cursor-pointer"
 					style={{
 						background: `linear-gradient(to right, #F6A52D 0%, #F6A52D ${transparency}%, #d1d5db ${transparency}%, #d1d5db 100%)`
@@ -113,7 +122,7 @@ export default function CaptionTransparencyOverlay({
 						return (
 							<button
 								key={value}
-								onClick={() => setTransparency(value)}
+								onClick={() => commitTransparency(value)}
 								className={`h-12 rounded-[10px] text-base leading-none font-bold border-2 transition-colors ${
 									active
 										? "bg-[#F8E4CB] border-[#F6A52D] text-[#F6A52D]"
@@ -135,7 +144,7 @@ export default function CaptionTransparencyOverlay({
 					</button>
 					<button
 						onClick={() => {
-							onTransparencyChange?.(transparency)
+							commitTransparency(transparency)
 							onClose()
 						}}
 						className="px-5 py-2 rounded-full bg-[#FF7A2F] text-sm font-semibold text-white hover:bg-[#F26A1B] transition-colors"

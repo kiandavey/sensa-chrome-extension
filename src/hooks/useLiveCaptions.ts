@@ -1,8 +1,20 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
   const [captions, setCaptions] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const targetLanguageRef = useRef(targetLanguage)
+
+  useEffect(() => {
+    targetLanguageRef.current = targetLanguage
+
+    if (!isActive) return
+
+    chrome.runtime.sendMessage({
+      type: "UPDATE_CAPTION_LANGUAGE",
+      targetLang: targetLanguage
+    })
+  }, [targetLanguage, isActive])
 
   useEffect(() => {
     if (!isActive) {
@@ -12,12 +24,38 @@ export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
 
     setError(null)
     setCaptions([])
+    console.log("[useLiveCaptions] Instructing background to start...")
 
-    chrome.runtime.sendMessage({ type: "START_CAPTURE", targetLang: targetLanguage }, (res) => {
-      if (!res?.ok) setError(res?.error || "Failed to start capture.")
-    })
+    let cancelled = false
+    const startCapture = (attempt = 1) => {
+      chrome.runtime.sendMessage({ type: "START_CAPTURE", targetLang: targetLanguageRef.current }, (res) => {
+        if (cancelled) return
+
+        const runtimeError = chrome.runtime.lastError?.message
+        const responseError = typeof res?.error === "string" ? res.error : ""
+        const combinedError = runtimeError || responseError
+
+        if (res?.ok) {
+          return
+        }
+
+        const isTransient = /receiving end does not exist|message port closed|No Tab ID|Failed to get stream ID/i.test(combinedError)
+        if (isTransient && attempt < 3) {
+          setTimeout(() => startCapture(attempt + 1), 200)
+          return
+        }
+
+        setError(combinedError || "Failed to start capture.")
+      })
+    }
+
+    startCapture()
 
     const handleMessage = (msg: any) => {
+      // Print beamed messages from the invisible window!
+      if (msg.type === "PROXY_LOG") {
+        console.log(`📡 [Sensa Background]: ${msg.message}`)
+      }
       if (msg.type === "CAPTION_UPDATE" && msg.text) {
         setCaptions((prev) => [...prev, msg.text].slice(-4))
       }
@@ -26,10 +64,11 @@ export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
     chrome.runtime.onMessage.addListener(handleMessage)
 
     return () => {
+      cancelled = true
       chrome.runtime.onMessage.removeListener(handleMessage)
       chrome.runtime.sendMessage({ type: "STOP_CAPTURE" })
     }
-  }, [isActive, targetLanguage])
+  }, [isActive])
 
   return { captions, error }
 }

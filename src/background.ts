@@ -1,60 +1,89 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+async function ensureOffscreen() {
+  const url = chrome.runtime.getURL("tabs/audioproxy.html")
   
-  if (message?.type === "START_CAPTURE") {
-    const targetTabId = sender.tab?.id;
-    if (!targetTabId) return sendResponse({ ok: false, error: "No Tab ID" });
+  if (chrome.offscreen?.hasDocument) {
+    const exists = await chrome.offscreen.hasDocument()
+    if (exists) return
+  }
+  
+  try {
+    await chrome.offscreen.createDocument({
+      url,
+      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as any[],
+      justification: 'Capturing and playing tab audio'
+    })
+    // --- THE RACE CONDITION FIX ---
+    // Give React 1 full second to boot up inside the invisible window before continuing
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  } catch (e: any) {
+    if (!e.message.includes('Only a single offscreen')) throw e
+  }
+}
 
-    ;(async () => {
-      try {
-        if (chrome.offscreen && await chrome.offscreen.hasDocument()) {
-          await chrome.offscreen.closeDocument()
+async function resetOffscreen() {
+  if (chrome.offscreen?.hasDocument) {
+    const exists = await chrome.offscreen.hasDocument()
+    if (exists) {
+      await chrome.offscreen.closeDocument()
+    }
+  }
+}
+
+async function resolveTargetTabId(sender: chrome.runtime.MessageSender): Promise<number | null> {
+  if (typeof sender.tab?.id === "number") {
+    return sender.tab.id
+  }
+
+  // Fallback for rare contexts where sender.tab is temporarily unavailable.
+  try {
+    const activeTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+    const activeId = activeTabs?.[0]?.id
+    return typeof activeId === "number" ? activeId : null
+  } catch {
+    return null
+  }
+}
+
+async function getStreamIdWithRetry(targetTabId: number, attempts = 3): Promise<string> {
+  let lastError = "Failed to get stream ID"
+
+  for (let i = 0; i < attempts; i++) {
+    const streamId = await new Promise<string | null>((resolve) => {
+      chrome.tabCapture.getMediaStreamId({ targetTabId }, (id) => {
+        const err = chrome.runtime.lastError?.message
+        if (err || !id) {
+          lastError = err || "Failed to get stream ID"
+          resolve(null)
+          return
         }
+        resolve(id)
+      })
+    })
 
-        await chrome.offscreen.createDocument({
-          url: chrome.runtime.getURL("tabs/audioproxy.html"),
-          reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as any[],
-          justification: 'Capturing and playing tab audio'
-        })
-        
-        await new Promise(resolve => setTimeout(resolve, 300))
+    if (streamId) {
+      return streamId
+    }
 
-        chrome.tabCapture.getMediaStreamId({ targetTabId }, (streamId) => {
-          if (!streamId) throw new Error("Failed to get stream ID")
-          chrome.runtime.sendMessage({
-            type: "EXECUTE_OFFSCREEN_CAPTURE",
-            streamId,
-            targetLang: message.targetLang,
-            targetTabId
-          })
-          sendResponse({ ok: true })
-        })
-      } catch (err) {
-        sendResponse({ ok: false, error: String(err) })
-      }
-    })()
-    return true
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    }
   }
 
-  if (message?.type === "STOP_CAPTURE") {
-    ;(async () => {
-      if (chrome.offscreen && await chrome.offscreen.hasDocument()) {
-        await chrome.offscreen.closeDocument()
-      }
-      sendResponse({ ok: true })
-    })()
-    return true
-  }
+  throw new Error(lastError)
+}
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // --- DEEPL TRANSLATOR ---
   if (message?.type === "TRANSLATE_TEXT") {
     ;(async () => {
       try {
-        const text = message.text || ""
+        const text = typeof message?.text === "string" ? message.text : ""
+        const targetLang = typeof message?.targetLang === "string" ? message.targetLang : "EN"
         if (!text.trim()) return sendResponse({ ok: true, translated: "" })
 
         const params = new URLSearchParams()
         params.append("text", text)
-        params.append("target_lang", message.targetLang || "EN")
+        params.append("target_lang", targetLang)
 
         const response = await fetch("https://api-free.deepl.com/v2/translate", {
           method: "POST",
@@ -65,9 +94,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           body: params.toString()
         })
 
-        if (!response.ok) throw new Error("DeepL failed")
+        if (!response.ok) throw new Error(`DeepL failed: ${response.status}`)
         const payload = await response.json()
-        sendResponse({ ok: true, translated: payload?.translations?.[0]?.text })
+        const translated = payload?.translations?.[0]?.text
+        if (typeof translated !== "string") throw new Error("Translation failed.")
+        sendResponse({ ok: true, translated })
       } catch (error) {
         sendResponse({ ok: false, error: String(error) })
       }
@@ -75,9 +106,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true
   }
 
-  // 🚨 THE BRIDGE: Receive from Offscreen, beam directly to YouTube!
+  // --- START INVISIBLE CAPTURE ---
+  if (message?.type === "START_CAPTURE") {
+    ;(async () => {
+      try {
+        await resetOffscreen()
+        const targetTabId = await resolveTargetTabId(sender)
+        if (targetTabId === null) {
+          sendResponse({ ok: false, error: "No Tab ID (could not resolve active tab)" })
+          return
+        }
+
+        await ensureOffscreen()
+
+        const streamId = await getStreamIdWithRetry(targetTabId)
+
+        chrome.runtime.sendMessage({
+          type: "EXECUTE_OFFSCREEN_CAPTURE",
+          streamId,
+          targetLang: message.targetLang,
+          targetTabId
+        })
+        sendResponse({ ok: true })
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) })
+      }
+    })()
+    return true
+  }
+
+  // --- STOP CAPTURE ---
+  if (message?.type === "STOP_CAPTURE") {
+    ;(async () => {
+      try {
+        chrome.runtime.sendMessage({ type: "STOP_OFFSCREEN_CAPTURE" })
+        await resetOffscreen()
+        sendResponse({ ok: true })
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) })
+      }
+    })()
+    return true
+  }
+
+  if (message?.type === "UPDATE_CAPTION_LANGUAGE") {
+    chrome.runtime.sendMessage({
+      type: "UPDATE_CAPTION_LANGUAGE_OFFSCREEN",
+      targetLang: message.targetLang
+    })
+    sendResponse({ ok: true })
+    return false
+  }
+
+  // Forward offscreen transcription updates to the originating tab's content script.
   if (message?.type === "FORWARD_TO_TAB" && message.tabId) {
     chrome.tabs.sendMessage(message.tabId, message.payload).catch(() => {})
-    return true
+    sendResponse({ ok: true })
+    return false
   }
 })
