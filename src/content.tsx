@@ -26,6 +26,45 @@ export const getStyle = () => {
   return style
 }
 
+interface AuditorySettingsState {
+  fontFamily: string
+  showOriginalText: boolean
+  textColor: string
+  captionBgColor: string
+  outputDevice: string
+}
+
+const DEFAULT_AUDITORY_SETTINGS: AuditorySettingsState = {
+  fontFamily: "Arial",
+  showOriginalText: true,
+  textColor: "#000000",
+  captionBgColor: "#FFFFFF",
+  outputDevice: "Default - Speaker"
+}
+
+const hexToRgb = (hex: string) => {
+  const cleaned = hex.trim().replace(/^#/, "")
+  if (!/^([A-Fa-f0-9]{6})$/.test(cleaned)) return null
+
+  const value = Number.parseInt(cleaned, 16)
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255
+  }
+}
+
+const colorWithOpacity = (hex: string, opacity: number) => {
+  const rgb = hexToRgb(hex)
+  const alpha = Math.max(0.1, Math.min(1, opacity))
+
+  if (!rgb) {
+    return `rgba(0, 0, 0, ${alpha})`
+  }
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+}
+
 export default function FloatingDockManager() {
   const [activeMode, setActiveMode] = useState<"visual" | "auditory" | null>(null)
   const [userThemePref, setUserThemePref] = useState(false)
@@ -37,6 +76,7 @@ export default function FloatingDockManager() {
   const [isCaptionLanguageOpen, setIsCaptionLanguageOpen] = useState(false)
   const [isTextSizeOpen, setIsTextSizeOpen] = useState(false)
   const [isCaptionTransparencyOpen, setIsCaptionTransparencyOpen] = useState(false)
+  const [auditorySettings, setAuditorySettings] = useState<AuditorySettingsState>(DEFAULT_AUDITORY_SETTINGS)
   const [captionLanguage, setCaptionLanguage] = useState("en-US")
   const [textSize, setTextSize] = useState(32)
   const [captionTransparency, setCaptionTransparency] = useState(75)
@@ -106,7 +146,7 @@ export default function FloatingDockManager() {
 
   // --- THE BRIDGE ---
   useEffect(() => {
-    chrome.storage.local.get(["sensa_visual_active", "sensa_auditory_active", "sensa_user_profile", "sensa_visual_reading_speed", "sensa_visual_highlight_color", "sensa_visual_input_device_id", "sensa_visual_autoscroll_enabled", "sensa_auditory_caption_language", "sensa_auditory_text_size", "sensa_auditory_caption_transparency", "sensa_auditory_focus_mode"], (res) => {
+    chrome.storage.local.get(["sensa_visual_active", "sensa_auditory_active", "sensa_user_profile", "sensa_visual_reading_speed", "sensa_visual_highlight_color", "sensa_visual_input_device_id", "sensa_visual_autoscroll_enabled", "sensa_auditory_caption_language", "sensa_auditory_text_size", "sensa_auditory_caption_transparency", "sensa_auditory_focus_mode", "sensa_auditory_settings"], (res) => {
       const storedMode = res.sensa_visual_active ? "visual" : res.sensa_auditory_active ? "auditory" : null
       setActiveMode(storedMode)
       if (res.sensa_user_profile?.globalSettings?.theme === "dark") setUserThemePref(true)
@@ -114,6 +154,9 @@ export default function FloatingDockManager() {
       if (typeof res.sensa_auditory_text_size === "number") setTextSize(res.sensa_auditory_text_size)
       if (typeof res.sensa_auditory_caption_transparency === "number") setCaptionTransparency(res.sensa_auditory_caption_transparency)
       if (typeof res.sensa_auditory_focus_mode === "boolean") setIsFocusMode(res.sensa_auditory_focus_mode)
+      if (res.sensa_auditory_settings) {
+        setAuditorySettings({ ...DEFAULT_AUDITORY_SETTINGS, ...res.sensa_auditory_settings })
+      }
       if (typeof res.sensa_visual_highlight_color === "string") {
         setHighlightColor(res.sensa_visual_highlight_color)
       }
@@ -201,6 +244,12 @@ export default function FloatingDockManager() {
       }
       if (changes.sensa_auditory_caption_transparency !== undefined && typeof changes.sensa_auditory_caption_transparency.newValue === "number") {
         setCaptionTransparency(changes.sensa_auditory_caption_transparency.newValue)
+      }
+      if (changes.sensa_auditory_settings !== undefined) {
+        setAuditorySettings({
+          ...DEFAULT_AUDITORY_SETTINGS,
+          ...(changes.sensa_auditory_settings.newValue as Partial<AuditorySettingsState>)
+        })
       }
       if (changes.sensa_auditory_focus_mode !== undefined && typeof changes.sensa_auditory_focus_mode.newValue === "boolean") {
         setIsFocusMode(changes.sensa_auditory_focus_mode.newValue)
@@ -330,8 +379,11 @@ export default function FloatingDockManager() {
           captions={captions}
           error={captionsError}
           fontSize={textSize}
-          textColor="#FFFFFF"
-          bgColor={`rgba(0, 0, 0, ${Math.max(0.1, Math.min(1, captionTransparency / 100))})`}
+          textColor={auditorySettings.textColor || DEFAULT_AUDITORY_SETTINGS.textColor}
+          bgColor={colorWithOpacity(
+            auditorySettings.captionBgColor || DEFAULT_AUDITORY_SETTINGS.captionBgColor,
+            captionTransparency / 100
+          )}
         />
       )}
 

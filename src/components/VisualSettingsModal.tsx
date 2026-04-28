@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import ColorPickerPopup from "./ColorPickerPopup"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
 
@@ -20,6 +20,56 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
     onMouseEnter: () => playHoverAudio(label),
     onMouseLeave: cancelHoverAudio
   })
+
+  // Draggable/persisted position for modal
+  const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [initialOffsetLoaded, setInitialOffsetLoaded] = useState(false)
+  const offsetRef = useRef(offset)
+  const draggingRef = useRef(false)
+  const dragStartRef = useRef({ x: 0, y: 0 })
+  const offsetStartRef = useRef({ x: 0, y: 0 })
+
+  useEffect(() => {
+    offsetRef.current = offset
+  }, [offset])
+
+  useEffect(() => {
+    chrome.storage.local.get(["sensa_visual_settings_offset"], (res) => {
+      if (res.sensa_visual_settings_offset) setOffset(res.sensa_visual_settings_offset)
+      setInitialOffsetLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    const onMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return
+      const dx = ev.clientX - dragStartRef.current.x
+      const dy = ev.clientY - dragStartRef.current.y
+      setOffset({ x: offsetStartRef.current.x + dx, y: offsetStartRef.current.y + dy })
+    }
+
+    const onUp = () => {
+      if (!draggingRef.current) return
+      draggingRef.current = false
+      chrome.storage.local.set({ sensa_visual_settings_offset: offsetRef.current })
+    }
+
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+  }, [])
+
+  const onHeaderMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest("button, input, select, textarea")) return
+    e.preventDefault()
+    draggingRef.current = true
+    dragStartRef.current = { x: e.clientX, y: e.clientY }
+    offsetStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y }
+  }
 
   React.useEffect(() => {
     chrome.storage.local.get(["sensa_visual_highlight_color", "sensa_visual_input_device_id", "sensa_visual_output_device_id", "sensa_visual_autoscroll_enabled"], (res) => {
@@ -89,7 +139,15 @@ export default function VisualSettingsModal({ onClose }: VisualSettingsModalProp
     <div onClick={handleBackdropClick} className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm font-sans">
       
       {/* Modal Container */}
-      <div className="relative w-[440px] bg-white rounded-[40px] border-[3px] border-[#0A44FF] p-8 shadow-2xl text-black">
+      <div
+        className="relative w-[440px] bg-white rounded-[40px] border-[3px] border-[#0A44FF] p-8 shadow-2xl text-black"
+        onMouseDown={onHeaderMouseDown}
+        style={{
+          transform: `translate(${offset.x}px, ${offset.y}px)`,
+          cursor: "grab",
+          visibility: initialOffsetLoaded ? "visible" : "hidden"
+        }}
+      >
         
         {/* Header */}
         <h2 className="text-[28px] font-bold mb-8 tracking-tight">Settings</h2>

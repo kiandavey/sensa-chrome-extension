@@ -1,4 +1,9 @@
-import React, { useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
+
+interface CaptionOffset {
+  x: number
+  y: number
+}
 
 interface LiveCaptionBoxProps {
   captions: string[]
@@ -15,9 +20,31 @@ export default function LiveCaptionBox({
   textColor,
   bgColor
 }: LiveCaptionBoxProps) {
-  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const [offset, setOffset] = useState<CaptionOffset>({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const dragStartRef = useRef({ x: 0, y: 0 })
+  const offsetRef = useRef(offset)
+
+  useEffect(() => {
+    chrome.storage.local.get(["sensa_live_caption_offset"], (result) => {
+      const savedOffset = result.sensa_live_caption_offset as Partial<CaptionOffset> | undefined
+
+      if (typeof savedOffset?.x === "number" && typeof savedOffset?.y === "number") {
+        const nextOffset = { x: savedOffset.x, y: savedOffset.y }
+        offsetRef.current = nextOffset
+        setOffset(nextOffset)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    offsetRef.current = offset
+  }, [offset])
+
+  const updateOffset = (nextOffset: CaptionOffset) => {
+    offsetRef.current = nextOffset
+    setOffset(nextOffset)
+  }
 
   const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true)
@@ -27,18 +54,29 @@ export default function LiveCaptionBox({
     }
   }
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+  useEffect(() => {
     if (!isDragging) return
 
-    setOffset({
-      x: event.clientX - dragStartRef.current.x,
-      y: event.clientY - dragStartRef.current.y
-    })
-  }
+    const handleMouseMove = (event: MouseEvent) => {
+      updateOffset({
+        x: event.clientX - dragStartRef.current.x,
+        y: event.clientY - dragStartRef.current.y
+      })
+    }
 
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      chrome.storage.local.set({ sensa_live_caption_offset: offsetRef.current })
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [isDragging])
 
   const total = captions.length
 
@@ -46,9 +84,6 @@ export default function LiveCaptionBox({
     <div
       role="log"
       aria-live="polite"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
       style={{
         position: "fixed",
         left: "50%",

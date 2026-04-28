@@ -212,7 +212,7 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
   return (
     <div
       ref={popupRef}
-      className={`absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 z-[100000] w-[320px] rounded-xl border p-4 font-sans select-none cursor-default ${popupClass}`}
+      className={`absolute bottom-[calc(100%+16px)] left-1/2 -translate-x-1/2 z-[100000] w-[320px] rounded-[12px] border p-[16px] font-sans select-none cursor-default ${popupClass}`}
     >
       <div className={`absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-[14px] h-[14px] rotate-45 border-b border-r pointer-events-none ${arrowClass}`}></div>
       
@@ -220,11 +220,18 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
       <div 
         ref={mainAreaRef}
         onMouseDown={(e) => { isDraggingMain.current = true; handleMainDrag(e.clientX, e.clientY); }}
-        className="w-full h-[220px] rounded-lg relative overflow-hidden shadow-[inset_0_0_2px_rgba(0,0,0,0.1)] cursor-crosshair"
+        className="w-full h-[220px] rounded-[8px] relative overflow-hidden shadow-[inset_0_0_2px_rgba(0,0,0,0.1)] cursor-crosshair"
         style={{ backgroundColor: baseHueColor }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black pointer-events-none"></div>
+        {/* Use inline gradients so the saturation/value field always renders visibly. */}
+        <div 
+          className="absolute inset-0 pointer-events-none" 
+          style={{ background: 'linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0) 100%)' }}
+        ></div>
+        <div 
+          className="absolute inset-0 pointer-events-none" 
+          style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000000 100%)' }}
+        ></div>
         
         {/* Picker Thumb */}
         <div 
@@ -241,7 +248,7 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
       <div 
         ref={hueSliderRef}
         onMouseDown={(e) => { isDraggingHue.current = true; handleHueDrag(e.clientX); }}
-        className="mt-5 relative w-full h-[14px] rounded-full shadow-[inset_0_0_2px_rgba(0,0,0,0.2)] cursor-pointer" 
+        className="mt-[20px] relative w-full h-[14px] rounded-full shadow-[inset_0_0_2px_rgba(0,0,0,0.2)] cursor-pointer" 
         style={{ background: 'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)' }}
       >
         {/* Slider Thumb */}
@@ -255,45 +262,45 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
       </div>
 
       {/* 3. Hex & RGB Inputs */}
-      <div className="mt-5 flex gap-3">
-        <div className="flex flex-col gap-1.5 flex-[2]">
+      <div className="mt-[20px] flex gap-[12px]">
+        <div className="flex flex-col gap-[6px] flex-[2]">
           <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>Hex</label>
           <input
             value={hexInput}
             onChange={(event) => handleHexInput(event.target.value.trim())}
-            className={`w-full border rounded-lg px-3 py-2.5 text-[14px] outline-none ${inputClass}`}
+            className={`w-full border rounded-[8px] px-[12px] py-[10px] text-[14px] outline-none ${inputClass}`}
           />
         </div>
-        <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex flex-col gap-[6px] flex-1">
           <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>R</label>
           <input
             value={rInput}
             onChange={(event) => handleRgbInput("r", event.target.value.trim())}
-            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+            className={`w-full border rounded-[8px] px-[4px] py-[10px] text-[14px] text-center outline-none ${inputClass}`}
           />
         </div>
-        <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex flex-col gap-[6px] flex-1">
           <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>G</label>
           <input
             value={gInput}
             onChange={(event) => handleRgbInput("g", event.target.value.trim())}
-            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+            className={`w-full border rounded-[8px] px-[4px] py-[10px] text-[14px] text-center outline-none ${inputClass}`}
           />
         </div>
-        <div className="flex flex-col gap-1.5 flex-1">
+        <div className="flex flex-col gap-[6px] flex-1">
           <label className={`text-[12px] font-bold tracking-wide ${labelClass}`}>B</label>
           <input
             value={bInput}
             onChange={(event) => handleRgbInput("b", event.target.value.trim())}
-            className={`w-full border rounded-lg px-1 py-2.5 text-[14px] text-center outline-none ${inputClass}`}
+            className={`w-full border rounded-[8px] px-[4px] py-[10px] text-[14px] text-center outline-none ${inputClass}`}
           />
         </div>
       </div>
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-[16px] flex justify-end">
         <button
           onClick={onClose}
-          className={`px-4 py-2 text-sm font-semibold rounded-md text-white transition-colors ${actionButtonClass}`}
+          className={`px-[16px] py-[8px] text-[14px] font-semibold rounded-[6px] text-white transition-colors ${actionButtonClass}`}
         >
           Done
         </button>
