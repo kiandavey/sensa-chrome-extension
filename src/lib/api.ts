@@ -20,7 +20,21 @@ export function connectToLocalServer(
     // 1. STEALTH BYPASS: Play audio via HTML5 so you can actually hear it
     audioEl = new Audio()
     audioEl.srcObject = mediaStream
-    audioEl.play().catch(console.error)
+    // Try to apply saved output device
+    try {
+      chrome.storage.local.get(["sensa_auditory_settings"], async (res) => {
+        try {
+          const cfg = res?.sensa_auditory_settings
+          const deviceId = cfg?.outputDevice
+          if (deviceId && deviceId !== "default" && typeof (audioEl as any).setSinkId === "function") {
+            await (audioEl as any).setSinkId(deviceId)
+          }
+        } catch {}
+        audioEl!.play().catch(console.error)
+      })
+    } catch (err) {
+      audioEl.play().catch(console.error)
+    }
 
     // 2. Extract the data for Deepgram
     const source = audioCtx.createMediaStreamSource(mediaStream)

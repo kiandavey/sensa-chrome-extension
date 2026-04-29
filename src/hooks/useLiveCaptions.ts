@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
+export function useLiveCaptions(isActive: boolean, targetLanguage: string, showOriginalText: boolean) {
   const [captions, setCaptions] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const targetLanguageRef = useRef(targetLanguage)
@@ -57,6 +57,7 @@ export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
         console.log(`📡 [Sensa Background]: ${msg.message}`)
       }
       if (msg.type === "CAPTION_UPDATE" && msg.text) {
+        if (!showOriginalText && msg.source === "original") return
         setCaptions((prev) => [...prev, msg.text].slice(-4))
       }
     }
@@ -68,7 +69,7 @@ export function useLiveCaptions(isActive: boolean, targetLanguage: string) {
       chrome.runtime.onMessage.removeListener(handleMessage)
       chrome.runtime.sendMessage({ type: "STOP_CAPTURE" })
     }
-  }, [isActive])
+  }, [isActive, showOriginalText])
 
   return { captions, error }
 }

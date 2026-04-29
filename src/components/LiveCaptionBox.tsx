@@ -11,6 +11,7 @@ interface LiveCaptionBoxProps {
   fontSize: number
   textColor: string
   bgColor: string
+  fontFamily?: string
 }
 
 export default function LiveCaptionBox({
@@ -19,6 +20,7 @@ export default function LiveCaptionBox({
   fontSize,
   textColor,
   bgColor
+  , fontFamily
 }: LiveCaptionBoxProps) {
   const [offset, setOffset] = useState<CaptionOffset>({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -95,6 +97,7 @@ export default function LiveCaptionBox({
         backgroundColor: bgColor,
         color: textColor,
         fontSize: `${fontSize}px`,
+        fontFamily: fontFamily || "system-ui, Arial, sans-serif",
         boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
         userSelect: "none",
         cursor: isDragging ? "grabbing" : "grab",

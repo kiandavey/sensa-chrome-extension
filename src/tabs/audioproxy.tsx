@@ -58,7 +58,19 @@ export default function AudioProxy() {
 
           audioEl = new Audio()
           audioEl.srcObject = stream
-          await audioEl.play()
+          // Apply configured output device if set
+          chrome.storage.local.get(["sensa_auditory_settings"], async (res) => {
+            try {
+              const cfg = res?.sensa_auditory_settings
+              const deviceId = cfg?.outputDevice
+              if (deviceId && deviceId !== "default" && typeof (audioEl as any).setSinkId === "function") {
+                await (audioEl as any).setSinkId(deviceId)
+              }
+            } catch (err) {
+              // ignore setSinkId failures
+            }
+            await audioEl!.play()
+          })
 
           socket = new WebSocket("ws://localhost:3000")
           
@@ -94,7 +106,7 @@ export default function AudioProxy() {
                 chrome.runtime.sendMessage({ 
                   type: "FORWARD_TO_TAB", 
                   tabId: targetTabId, 
-                  payload: { type: "CAPTION_UPDATE", text: rawText } 
+                  payload: { type: "CAPTION_UPDATE", text: rawText, source: "original" } 
                 })
 
                 // Request translation
@@ -106,7 +118,7 @@ export default function AudioProxy() {
                       chrome.runtime.sendMessage({ 
                         type: "FORWARD_TO_TAB", 
                         tabId: targetTabId, 
-                        payload: { type: "CAPTION_UPDATE", text: res.translated } 
+                        payload: { type: "CAPTION_UPDATE", text: res.translated, source: "translated" } 
                       })
                     }
                   }

@@ -78,32 +78,32 @@ export default function CaptionLanguageOverlay({
         : "bg-white border-gray-300 text-gray-800 placeholder:text-gray-400"
 
     return (
-        <div onClick={handleBackdropClick} className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/45 backdrop-blur-sm font-sans px-4">
-            <div className={`relative w-full max-w-[420px] rounded-[34px] border-[3px] p-7 shadow-2xl ${panelClass}`}>
-                <h2 className="text-[28px] font-bold mb-2 tracking-tight">Caption Language</h2>
-                <p className={`text-sm mb-5 ${isDark ? "text-gray-400" : "text-gray-500"}`}>Current: {activeLabel}</p>
+        <div onClick={handleBackdropClick} className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/45 backdrop-blur-sm font-sans px-[16px]">
+            <div className={`relative w-full max-w-[420px] rounded-[34px] border-[3px] p-[28px] shadow-2xl ${panelClass}`}>
+                <h2 className="text-[28px] font-bold mb-[10px] tracking-tight">Caption Language</h2>
+                <p className={`text-[14px] mb-[20px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>Current: {activeLabel}</p>
 
                 <button
                     onClick={onClose}
-                    className={`absolute top-6 right-6 transition-colors focus:outline-none ${isDark ? "text-gray-100 hover:text-gray-300" : "text-black hover:text-gray-500"}`}
+                    className={`absolute top-[24px] right-[24px] transition-colors focus:outline-none ${isDark ? "text-gray-100 hover:text-gray-300" : "text-black hover:text-gray-500"}`}
                 >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-[28px] h-[28px]">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                 </button>
 
-                <div className="mb-4">
+                <div className="mb-[16px]">
                     <input
                         value={searchTerm}
                         onChange={(event) => setSearchTerm(event.target.value)}
                         placeholder="Search language"
-                        className={`w-full border rounded-xl text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FF7A2F] ${inputClass}`}
+                        className={`w-full border rounded-[14px] text-[14px] px-[14px] py-[10px] focus:outline-none focus:ring-2 focus:ring-[#FF7A2F] ${inputClass}`}
                     />
                 </div>
 
                 <div className={`border rounded-2xl overflow-hidden ${isDark ? "border-gray-800" : "border-gray-200"}`}>
-                    <div className="max-h-[220px] overflow-y-auto">
+                    <div className="max-h-[240px] overflow-y-auto">
                         {filteredLanguages.map((language) => {
                             const isSelected = language.code === selectedLanguage
                             return (
@@ -111,7 +111,7 @@ export default function CaptionLanguageOverlay({
                                     key={language.code}
                                     type="button"
                                     onClick={() => setSelectedLanguage(language.code)}
-                                    className={`w-full text-left px-4 py-3 transition-colors flex items-center justify-between ${
+                                    className={`w-full text-left px-[16px] py-[14px] transition-colors flex items-center justify-between ${
                                         isSelected
                                             ? "bg-[#FF7A2F] text-white"
                                             : isDark
@@ -119,24 +119,24 @@ export default function CaptionLanguageOverlay({
                                                 : "bg-white text-gray-800 hover:bg-orange-50"
                                     }`}
                                 >
-                                    <span className="font-medium text-sm">{language.label}</span>
-                                    <span className={`text-xs ${isSelected ? "text-white/90" : isDark ? "text-gray-400" : "text-gray-500"}`}>{language.code}</span>
+                                    <span className="font-medium text-[14px]">{language.label}</span>
+                                    <span className={`text-[11px] ${isSelected ? "text-white/90" : isDark ? "text-gray-400" : "text-gray-500"}`}>{language.code}</span>
                                 </button>
                             )
                         })}
 
                         {filteredLanguages.length === 0 && (
-                            <div className={`px-4 py-8 text-center text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                            <div className={`px-[16px] py-[32px] text-center text-[14px] ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                                 No language found.
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="mt-7 flex justify-end gap-3">
+                <div className="mt-[28px] flex justify-end gap-[12px]">
                     <button
                         onClick={onClose}
-                        className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-300 text-gray-700 hover:bg-gray-100"}`}
+                        className={`px-[16px] py-[10px] rounded-full border text-[14px] font-semibold transition-colors ${isDark ? "border-gray-700 text-gray-300 hover:bg-gray-800" : "border-gray-300 text-gray-700 hover:bg-gray-100"}`}
                     >
                         Cancel
                     </button>
@@ -145,7 +145,7 @@ export default function CaptionLanguageOverlay({
                             onLanguageChange?.(selectedLanguage)
                             onClose()
                         }}
-                        className="px-5 py-2 rounded-full bg-[#FF7A2F] text-sm font-semibold text-white hover:bg-[#F26A1B] transition-colors"
+                        className="px-[20px] py-[10px] rounded-full bg-[#FF7A2F] text-[14px] font-semibold text-white hover:bg-[#F26A1B] transition-colors"
                     >
                         Apply
                     </button>

@@ -1,3 +1,5 @@
+declare var process: any;
+
 async function ensureOffscreen() {
   const url = chrome.runtime.getURL("tabs/audioproxy.html")
   
@@ -163,5 +165,60 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.sendMessage(message.tabId, message.payload).catch(() => {})
     sendResponse({ ok: true })
     return false
+  }
+
+  // --- FETCH GOOGLE FONTS (background fallback) ---
+  if (message?.type === "FETCH_GOOGLE_FONTS") {
+    ;(async () => {
+      try {
+        const key = typeof message?.key === "string" ? message.key : ((import.meta as any).env?.VITE_GOOGLE_FONTS_API_KEY || (import.meta as any).env?.PLASMO_PUBLIC_GOOGLE_FONTS_API_KEY)
+
+        if (!key) {
+          sendResponse({ ok: false, error: "Missing API key in background" })
+          return
+        }
+
+        const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key=${key}&sort=popularity`)
+        if (!res.ok) {
+          sendResponse({ ok: false, error: `Status ${res.status}` })
+          return
+        }
+
+        const data = await res.json()
+        if (!Array.isArray(data.items)) {
+          sendResponse({ ok: false, error: "Unexpected response shape" })
+          return
+        }
+
+        sendResponse({ ok: true, items: data.items })
+      } catch (err) {
+        sendResponse({ ok: false, error: String(err) })
+      }
+    })()
+    return true
+  }
+
+  // 5. FETCH GOOGLE FONTS (Bypasses YouTube's strict CSP!)
+  if (message?.type === "FETCH_GOOGLE_FONTS") {
+    ;(async () => {
+      try {
+        // Grab the key securely from the background environment
+        const apiKey = process.env.PLASMO_PUBLIC_GOOGLE_FONTS_API_KEY;
+        
+        if (!apiKey) {
+          return sendResponse({ ok: false, error: "missing api key in background" });
+        }
+
+        const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key=${apiKey}&sort=popularity`);
+        
+        if (!res.ok) throw new Error("Google Fonts API failed: " + res.status);
+        
+        const data = await res.json();
+        sendResponse({ ok: true, items: data.items });
+      } catch (error) {
+        sendResponse({ ok: false, error: String(error) });
+      }
+    })();
+    return true; // Keeps the message channel open for the async response
   }
 })

@@ -115,7 +115,8 @@ export default function FloatingDockManager() {
   const targetLanguage = (captionLanguage.split("-")[0] ?? "EN").toUpperCase()
   const { captions, error: captionsError } = useLiveCaptions(
     isAuditoryModeActive && isCaptionsActive,
-    targetLanguage
+    targetLanguage,
+    auditorySettings.showOriginalText
   )
 
   useEffect(() => {
@@ -384,6 +385,7 @@ export default function FloatingDockManager() {
             auditorySettings.captionBgColor || DEFAULT_AUDITORY_SETTINGS.captionBgColor,
             captionTransparency / 100
           )}
+          fontFamily={auditorySettings.fontFamily || DEFAULT_AUDITORY_SETTINGS.fontFamily}
         />
       )}
 

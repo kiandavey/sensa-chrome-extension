@@ -6,6 +6,14 @@ declare module "*.css" {
 }
 
 declare global {
+	interface ImportMetaEnv {
+		readonly VITE_GOOGLE_FONTS_API_KEY?: string
+	}
+
+	interface ImportMeta {
+		readonly env: ImportMetaEnv
+	}
+
 	interface SpeechRecognitionConstructor {
 		new (): SpeechRecognition
 	}
