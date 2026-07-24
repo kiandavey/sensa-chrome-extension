@@ -4,7 +4,7 @@
  *
  * Key Capabilities:
  * 1. Target Language Selection:
- *    - Exports `LANGUAGE_OPTIONS` supporting 120+ translation target locales powered by Azure Translator API.
+ *    - Exports `LANGUAGE_OPTIONS` supporting 135+ translation target locales powered by Azure Translator API.
  *    - Provides search filtering across language names and ISO codes.
  *
  * 2. Accessibility Controls:
@@ -21,7 +21,7 @@ interface CaptionLanguageOverlayProps {
   onLanguageChange?: (language: string) => void
 }
 
-// All Azure Translator supported target languages sorted by global popularity
+// All Azure Translator supported target languages (135+ total) sorted by popularity
 const LANGUAGE_OPTIONS = [
   // Top tier: most widely spoken globally
   { code: "en", label: "English" },
@@ -32,7 +32,7 @@ const LANGUAGE_OPTIONS = [
   { code: "ar", label: "Arabic" },
   { code: "fr", label: "French" },
   { code: "fr-ca", label: "French (Canadian)" },
-  { code: "pt", label: "Portuguese" },
+  { code: "pt", label: "Portuguese (Brazilian)" },
   { code: "pt-pt", label: "Portuguese (European)" },
   { code: "ru", label: "Russian" },
   { code: "ja", label: "Japanese" },
@@ -70,6 +70,7 @@ const LANGUAGE_OPTIONS = [
   { code: "sl", label: "Slovenian" },
   { code: "hr", label: "Croatian" },
   { code: "sr-Latn", label: "Serbian (Latin)" },
+  { code: "sr-Cyrl", label: "Serbian (Cyrillic)" },
   { code: "he", label: "Hebrew" },
   { code: "fa", label: "Persian" },
   { code: "ka", label: "Georgian" },
@@ -79,11 +80,13 @@ const LANGUAGE_OPTIONS = [
   { code: "ms", label: "Malay" },
   { code: "sw", label: "Swahili" },
   { code: "my", label: "Burmese" },
-  { code: "kmr", label: "Kurdish" },
+  { code: "kmr", label: "Kurdish (Northern)" },
+  { code: "ku", label: "Kurdish (Central)" },
   { code: "ky", label: "Kyrgyz" },
   { code: "tk", label: "Turkmen" },
   { code: "tg", label: "Tajik" },
-  { code: "mn-Cyrl", label: "Mongolian" },
+  { code: "mn-Cyrl", label: "Mongolian (Cyrillic)" },
+  { code: "mn-Mong", label: "Mongolian (Traditional)" },
   { code: "lv", label: "Latvian" },
   { code: "lt", label: "Lithuanian" },
   { code: "et", label: "Estonian" },
@@ -95,6 +98,7 @@ const LANGUAGE_OPTIONS = [
   { code: "bho", label: "Bhojpuri" },
   { code: "gom", label: "Konkani" },
   { code: "mai", label: "Maithili" },
+  { code: "doi", label: "Dogri" },
   { code: "is", label: "Icelandic" },
   { code: "ca", label: "Catalan" },
   { code: "gl", label: "Galician" },
@@ -121,15 +125,47 @@ const LANGUAGE_OPTIONS = [
   { code: "yo", label: "Yoruba" },
   { code: "zu", label: "Zulu" },
   { code: "ln", label: "Lingala" },
-  { code: "prs", label: "Dari" }
+  { code: "prs", label: "Dari" },
+  { code: "am", label: "Amharic" },
+  { code: "dv", label: "Dhivehi" },
+  { code: "fo", label: "Faroese" },
+  { code: "fj", label: "Fijian" },
+  { code: "inu", label: "Inuinnaqtun" },
+  { code: "iu", label: "Inuktitut" },
+  { code: "km", label: "Khmer" },
+  { code: "rw", label: "Kinyarwanda" },
+  { code: "lo", label: "Lao" },
+  { code: "lg", label: "Luganda" },
+  { code: "nya", label: "Nyanja" },
+  { code: "or", label: "Odia" },
+  { code: "run", label: "Rundi" },
+  { code: "sm", label: "Samoan" },
+  { code: "sa", label: "Sanskrit" },
+  { code: "sat", label: "Santali" },
+  { code: "gd", label: "Scottish Gaelic" },
+  { code: "st", label: "Sesotho" },
+  { code: "sn", label: "Shona" },
+  { code: "sd", label: "Sindhi" },
+  { code: "si", label: "Sinhala" },
+  { code: "su", label: "Sundanese" },
+  { code: "tg", label: "Tajik" },
+  { code: "tt", label: "Tatar" },
+  { code: "bo", label: "Tibetan" },
+  { code: "tpi", label: "Tok Pisin" },
+  { code: "to", label: "Tongan" },
+  { code: "ts", label: "Tsonga" },
+  { code: "ug", label: "Uyghur" },
+  { code: "xh", label: "Xhosa" },
+  { code: "yi", label: "Yiddish" }
 ]
 
-// Deepgram Nova-3 supported speech recognition languages
+// Deepgram Nova-3 supported speech recognition languages (45 total)
 export const SOURCE_LANGUAGE_OPTIONS = [
   { code: "en", label: "English" },
   { code: "ko", label: "Korean" },
   { code: "ja", label: "Japanese" },
-  { code: "zh", label: "Chinese" },
+  { code: "zh", label: "Chinese (Mandarin)" },
+  { code: "zh-TW", label: "Chinese (Taiwanese Mandarin)" },
   { code: "es", label: "Spanish" },
   { code: "fr", label: "French" },
   { code: "de", label: "German" },
@@ -155,7 +191,23 @@ export const SOURCE_LANGUAGE_OPTIONS = [
   { code: "ar", label: "Arabic" },
   { code: "he", label: "Hebrew" },
   { code: "ms", label: "Malay" },
-  { code: "tl", label: "Tagalog (Filipino)" }
+  { code: "tl", label: "Tagalog (Filipino)" },
+  { code: "bg", label: "Bulgarian" },
+  { code: "ca", label: "Catalan" },
+  { code: "hr", label: "Croatian" },
+  { code: "et", label: "Estonian" },
+  { code: "ka", label: "Georgian" },
+  { code: "is", label: "Icelandic" },
+  { code: "lv", label: "Latvian" },
+  { code: "lt", label: "Lithuanian" },
+  { code: "mk", label: "Macedonian" },
+  { code: "mr", label: "Marathi" },
+  { code: "fa", label: "Persian" },
+  { code: "sk", label: "Slovak" },
+  { code: "sl", label: "Slovenian" },
+  { code: "ta", label: "Tamil" },
+  { code: "te", label: "Telugu" },
+  { code: "ur", label: "Urdu" }
 ]
 
 const normalizeTargetCode = (code: string | undefined): string => {
