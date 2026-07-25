@@ -1245,7 +1245,7 @@ export default function VisualDock({
           // Block feedback loops from the system's own speech for the "help/commands" trigger words
           const systemRecentlySpoke = Date.now() - lastUISpeechTimeRef.current < lastUISpeechDurationRef.current
           if (systemRecentlySpoke) {
-            cleanText = cleanText.replace(/\b(help|commands|commands list|list commands|help me|what can i say|read commands|show commands)\b/gi, " ")
+            cleanText = cleanText.replace(/\b(help|commands)\b/gi, " ")
           }
 
           if (!cleanText) return false
@@ -1282,7 +1282,7 @@ export default function VisualDock({
           }
 
           if (!callbacksRef.current.isVoiceCommandActive) {
-            if (check("deactivate", "deactivate visual mode", "stop visual mode")) {
+            if (check("deactivate", "deactivate visual mode")) {
               applyCommand("close", () => callbacksRef.current.onClose())
               return true
             }
@@ -1290,7 +1290,7 @@ export default function VisualDock({
             const isCustom = currentWakeWord !== "sensa"
             const wakeMatched = isCustom
               ? paddedSpeech.includes(` ${currentWakeWord} `) || fuzzyCheck(currentWakeWord, 1)
-              : check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens", "wake up", "hey sensa") || fuzzyCheck("sensa", 1)
+              : check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens") || fuzzyCheck("sensa", 1)
 
             if (canToggleVoiceMode && wakeMatched) {
               applyCommand("activate-voice", () => {
@@ -1304,7 +1304,7 @@ export default function VisualDock({
           }
 
           if (shouldProcessCommands) {
-            if (callbacksRef.current.isVoiceCommandActive && canToggleVoiceMode && (check("stop listening", "stop voice", "sleep", "mute", "quiet", "deactivate voice", "deactivate voice command", "deactivate listening") || fuzzyCheck("sleep", 1) || fuzzyCheck("mute", 1))) {
+            if (callbacksRef.current.isVoiceCommandActive && canToggleVoiceMode && (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening"))) {
               applyCommand("deactivate-voice", () => {
                 lockVoiceToggle()
                 callbacksRef.current.playClickAudio?.('Voice commands deactivated')
@@ -1312,7 +1312,7 @@ export default function VisualDock({
               })
               return true
             }
-            else if (check("help", "what can i say", "commands", "commands list", "list commands", "help me", "read commands", "show commands") || fuzzyCheck("help", 1)) {
+            else if (check("help", "commands") || fuzzyCheck("help", 1)) {
               applyCommand("help", () => {
                 const available = callbacksRef.current.isMinimized
                   ? "Stop listening. This turns off voice commands. Expand. This expands the dock. Read. This starts reading. Stop. This stops reading. Next. This skips forward. Previous. This goes back. Restart. This starts from the beginning. Reading speed. This adjusts speed. Settings. This opens settings. Close. This will exit and deactivate visual mode."
@@ -1321,14 +1321,14 @@ export default function VisualDock({
               })
               return true
             }
-            else if (check("speed", "rate", "reading speed", "voice speed") || fuzzyCheck("speed", 1) || fuzzyCheck("rate", 1)) {
+            else if (check("speed", "reading speed") || fuzzyCheck("speed", 1)) {
               applyCommand("speed", () => {
                 callbacksRef.current.playClickAudio?.('Reeding speed')
                 callbacksRef.current.onOpenReadingSpeed(true)
               })
               return true
             }
-            else if (check("setting", "settings", "options", "open settings") || fuzzyCheck("settings", 1) || fuzzyCheck("options", 1)) {
+            else if (check("setting", "settings") || fuzzyCheck("settings", 1)) {
               applyCommand("settings", () => {
                 callbacksRef.current.playClickAudio?.('Settings')
                 callbacksRef.current.onOpenSettings(true)
@@ -1336,33 +1336,33 @@ export default function VisualDock({
               return true
             }
             // Rule 1 & 2 & 3: EAGER INTERIM EXECUTION + HOMOPHONE DICTIONARY MAPPING + EARLY REGEX BOUNDARIES
-            else if (/\b(restart|restore|start over|re start|repeat|reset|refresh|re-start|from the top|from the beginning|begin again|we start|replay|rewind|again)\b/i.test(cleanText)) {
+            else if (/\b(restart|repeat|re start|re-start|replay|rewind)\b/i.test(cleanText)) {
               applyCommand("restart", () => {
                 callbacksRef.current.playClickAudio?.('Repeat')
                 callbacksRef.current.onRestart()
               })
               return true
             }
-            else if (/\b(next|necks|net|text|max|skip|forward|nex|nix|next page|next sentence)\b/i.test(cleanText)) {
+            else if (/\b(next|necks|net|nex|nix|next page|next sentence)\b/i.test(cleanText)) {
               applyCommand("next", () => {
                 callbacksRef.current.onNext()
               })
               return true
             }
-            else if (/\b(previous|previews|previs|prev|previ|preevi|back|go back|preveous|previus|privious|preview|previous page|previous sentence|go previous)\b/i.test(cleanText)) {
+            else if (/\b(previous|previews|previs|prev|previ|preevi|preveous|previus|privious|previous page|previous sentence)\b/i.test(cleanText)) {
               applyCommand("previous", () => {
                 callbacksRef.current.onPrev()
               })
               return true
             }
-            else if (((callbacksRef.current.isPlaying && !callbacksRef.current.isPaused) || callbacksRef.current.isPlayOptimistic || /\b(stop reading|stop playing|pause reading|stop it)\b/i.test(cleanText)) && /\b(stop|pause|halt|stop reading|stop playing|paused|shut up|hush|shh|stop it|pause reading|stahp|cease|freeze|silence|quiet)\b/i.test(cleanText)) {
+            else if (((callbacksRef.current.isPlaying && !callbacksRef.current.isPaused) || callbacksRef.current.isPlayOptimistic || /\b(stop reading|stop playing|pause reading|stop it)\b/i.test(cleanText)) && /\b(stop|pause|stop reading|stop playing|paused|pause reading|stahp)\b/i.test(cleanText)) {
               applyCommand("stop", () => {
                 callbacksRef.current.handleStopReading()
               })
               return true
             }
-            else if (((!callbacksRef.current.isPlaying || callbacksRef.current.isPaused) || !callbacksRef.current.isPlayOptimistic || /\b(start reading|read page|read text|read out|start play)\b/i.test(cleanText)) && /\b(read|red|reed|rid|ready|reading|play|resume|continue|start reading|start|go|speak|begin)\b/i.test(cleanText)) {
-              if (check("speed", "rate", "reading speed", "voice speed")) {
+            else if (((!callbacksRef.current.isPlaying || callbacksRef.current.isPaused) || !callbacksRef.current.isPlayOptimistic || /\b(start reading|read page|read text|read out|start play)\b/i.test(cleanText)) && /\b(read|red|reed|rid|ready|reading|play|resume|continue|start reading)\b/i.test(cleanText)) {
+              if (check("speed", "reading speed")) {
                 return false
               }
               if (commandTimeout) {
@@ -1374,21 +1374,21 @@ export default function VisualDock({
               })
               return true
             }
-            else if (!callbacksRef.current.isMinimized && (check("minimize", "collapse", "hide", "mini") || fuzzyCheck("minimize", 1) || fuzzyCheck("collapse", 1))) {
+            else if (!callbacksRef.current.isMinimized && (check("minimize", "mini") || fuzzyCheck("minimize", 1))) {
               applyCommand("minimize", () => {
                 callbacksRef.current.playClickAudio?.('Minimize')
                 callbacksRef.current.onMinimizeToggle()
               })
               return true
             }
-            else if (callbacksRef.current.isMinimized && (check("expand", "maximize", "show", "open", "expend", "span") || fuzzyCheck("expand", 1) || fuzzyCheck("maximize", 1))) {
+            else if (callbacksRef.current.isMinimized && (check("expand", "expend", "span") || fuzzyCheck("expand", 1))) {
               applyCommand("expand", () => {
                 callbacksRef.current.playClickAudio?.('Expand')
                 callbacksRef.current.onMinimizeToggle()
               })
               return true
             }
-            else if ((check("close", "exit", "quit", "dismiss", "deactivate", "turn off") || fuzzyCheck("close", 1) || fuzzyCheck("exit", 1) || fuzzyCheck("quit", 1)) && !check("deactivate voice", "deactivate voice command", "deactivate listening")) {
+            else if ((check("close") || fuzzyCheck("close", 1)) && !check("deactivate voice", "deactivate voice command", "deactivate listening")) {
               applyCommand("close", () => {
                 callbacksRef.current.playClickAudio?.('Visual mode deactivated')
                 callbacksRef.current.onClose()

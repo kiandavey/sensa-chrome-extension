@@ -515,8 +515,8 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
 
         if (!isVoiceCommandActiveRef.current) {
           if (Date.now() < ignoreSpeechUntil) return
-          if (check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens", "wake up", "hey sensa") || fuzzyCheck("sensa", 1)) {
-            applyCommand("sensa", ["sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens", "wake up", "hey sensa"], () => {
+          if (check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens") || fuzzyCheck("sensa", 1)) {
+            applyCommand("sensa", ["sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens"], () => {
               playClickAudio("Voice commands activated")
               onToggleVoiceCommand?.()
             })
@@ -524,33 +524,33 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           return
         }
 
-        if (check("stop listening", "stop voice", "sleep", "mute", "quiet", "deactivate voice", "deactivate voice command", "deactivate listening")) {
-          applyCommand("deactivate-voice", ["stop listening", "stop voice", "sleep", "mute", "quiet", "deactivate voice", "deactivate voice command", "deactivate listening"], () => {
+        if (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening")) {
+          applyCommand("deactivate-voice", ["stop listening", "deactivate voice", "deactivate voice command", "deactivate listening"], () => {
             wrappedPlayClickAudio("Voice commands deactivated")
             onToggleVoiceCommand?.()
           })
           return
         }
 
-        if (check("help", "commands", "options", "what can i say")) {
-          applyCommand("help", ["help", "commands", "options", "what can i say"], () => {
+        if (check("help", "commands")) {
+          applyCommand("help", ["help", "commands"], () => {
             wrappedPlayClickAudio("Say increase or decrease to adjust reading speed. Or say close to exit.")
           })
           return
         }
 
-        if (check("close", "closed", "clothes", "cancel", "back", "exit", "quit", "dismiss", "hide", "duck") || fuzzyCheck("close", 1) || fuzzyCheck("exit", 1) || fuzzyCheck("quit", 1)) {
-          applyCommand("close", ["close", "closed", "clothes", "cancel", "back", "exit", "quit", "dismiss", "hide", "duck"], () => closeOverlay())
+        if (check("close", "closed", "clothes") || fuzzyCheck("close", 1)) {
+          applyCommand("close", ["close", "closed", "clothes"], () => closeOverlay())
           return
         }
 
-        if (check("increase", "faster", "speed up", "up")) {
-          applyCommand("increase", ["increase", "faster", "speed up", "up"], () => applySpeed(speedRef.current + 0.25))
+        if (check("increase")) {
+          applyCommand("increase", ["increase"], () => applySpeed(speedRef.current + 0.25))
           return
         }
 
-        if (check("decrease", "slower", "lower", "slow down", "down")) {
-          applyCommand("decrease", ["decrease", "slower", "lower", "slow down", "down"], () => applySpeed(speedRef.current - 0.25))
+        if (check("decrease")) {
+          applyCommand("decrease", ["decrease"], () => applySpeed(speedRef.current - 0.25))
           return
         }
 

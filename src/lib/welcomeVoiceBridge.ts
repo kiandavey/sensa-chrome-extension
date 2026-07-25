@@ -245,56 +245,13 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
 
     // Phrases that direct proceed
     if (
-      normalizedTranscript.includes("enter") ||
-      normalizedTranscript.includes("proceed") ||
       normalizedTranscript.includes("get started") ||
-      normalizedTranscript.includes("start") ||
-      normalizedTranscript.includes("go") ||
-      normalizedTranscript.includes("inter") ||
-      normalizedTranscript.includes("center") ||
-      normalizedTranscript.includes("okay") ||
-      normalizedTranscript.includes("yes") ||
-      normalizedTranscript.includes("confirm") ||
-      normalizedTranscript.includes("next") ||
-      normalizedTranscript.includes("select") ||
-      normalizedTranscript.includes("click") ||
-      normalizedTranscript.includes("press") ||
-      normalizedTranscript.includes("activate") ||
-      normalizedTranscript.includes("open") ||
-      normalizedTranscript.includes("begin") ||
-      normalizedTranscript.includes("entry") ||
-      normalizedTranscript.includes("entire") ||
-      normalizedTranscript.includes("into") ||
-      normalizedTranscript.includes("go ahead") ||
-      normalizedTranscript.includes("turn on") ||
-      normalizedTranscript.includes("visual mode") ||
-      normalizedTranscript.includes("auditory mode") ||
-      normalizedTranscript.includes("audio mode")
+      normalizedTranscript.includes("start")
     ) {
       proceedScore += 5
     } else if (
-      fuzzyMatch(normalizedTranscript, "enter", 1) ||
-      fuzzyMatch(normalizedTranscript, "proceed", 2) ||
       fuzzyMatch(normalizedTranscript, "get started", 2) ||
-      fuzzyMatch(normalizedTranscript, "start", 1) ||
-      fuzzyMatch(normalizedTranscript, "go", 0) ||
-      fuzzyMatch(normalizedTranscript, "inter", 1) ||
-      fuzzyMatch(normalizedTranscript, "center", 1) ||
-      fuzzyMatch(normalizedTranscript, "okay", 1) ||
-      fuzzyMatch(normalizedTranscript, "yes", 1) ||
-      fuzzyMatch(normalizedTranscript, "confirm", 1) ||
-      fuzzyMatch(normalizedTranscript, "next", 1) ||
-      fuzzyMatch(normalizedTranscript, "select", 1) ||
-      fuzzyMatch(normalizedTranscript, "click", 1) ||
-      fuzzyMatch(normalizedTranscript, "press", 1) ||
-      fuzzyMatch(normalizedTranscript, "activate", 1) ||
-      fuzzyMatch(normalizedTranscript, "open", 1) ||
-      fuzzyMatch(normalizedTranscript, "begin", 1) ||
-      fuzzyMatch(normalizedTranscript, "entry", 1) ||
-      fuzzyMatch(normalizedTranscript, "entire", 1) ||
-      fuzzyMatch(normalizedTranscript, "into", 1) ||
-      fuzzyMatch(normalizedTranscript, "go ahead", 1) ||
-      fuzzyMatch(normalizedTranscript, "turn on", 1)
+      fuzzyMatch(normalizedTranscript, "start", 1)
     ) {
       proceedScore += 3
     }

@@ -50,7 +50,7 @@ const LANGUAGE_OPTIONS = [
   { code: "gu", label: "Gujarati" },
   { code: "ml", label: "Malayalam" },
   // Regional & Asian / Philippine languages
-  { code: "fil", label: "Filipino / Tagalog" },
+  { code: "fil", label: "Tagalog (Filipino)" },
   { code: "ceb", label: "Cebuano" },
   { code: "ilo", label: "Ilocano" },
   { code: "th", label: "Thai" },
@@ -84,7 +84,6 @@ const LANGUAGE_OPTIONS = [
   { code: "ku", label: "Kurdish (Central)" },
   { code: "ky", label: "Kyrgyz" },
   { code: "tk", label: "Turkmen" },
-  { code: "tg", label: "Tajik" },
   { code: "mn-Cyrl", label: "Mongolian (Cyrillic)" },
   { code: "mn-Mong", label: "Mongolian (Traditional)" },
   { code: "lv", label: "Latvian" },
@@ -148,7 +147,6 @@ const LANGUAGE_OPTIONS = [
   { code: "sd", label: "Sindhi" },
   { code: "si", label: "Sinhala" },
   { code: "su", label: "Sundanese" },
-  { code: "tg", label: "Tajik" },
   { code: "tt", label: "Tatar" },
   { code: "bo", label: "Tibetan" },
   { code: "tpi", label: "Tok Pisin" },
@@ -335,8 +333,15 @@ export default function CaptionLanguageOverlay({
   const filteredLanguages = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase()
     if (!needle) return currentOptions
-    return currentOptions.filter((item) => {
+    const matches = currentOptions.filter((item) => {
       return item.label.toLowerCase().includes(needle) || item.code.toLowerCase().includes(needle)
+    })
+    return matches.sort((a, b) => {
+      const aStarts = a.label.toLowerCase().startsWith(needle) || a.code.toLowerCase().startsWith(needle)
+      const bStarts = b.label.toLowerCase().startsWith(needle) || b.code.toLowerCase().startsWith(needle)
+      if (aStarts && !bStarts) return -1
+      if (!aStarts && bStarts) return 1
+      return 0
     })
   }, [searchTerm, currentOptions])
 
@@ -356,8 +361,7 @@ export default function CaptionLanguageOverlay({
       sensa_auditory_caption_language: newTarget 
     })
     try {
-      const tgt = (newTarget.split("-")[0] || newTarget).toUpperCase()
-      chrome.runtime.sendMessage({ type: "UPDATE_CAPTION_LANGUAGE", targetLang: tgt }, () => void chrome.runtime.lastError)
+      chrome.runtime.sendMessage({ type: "UPDATE_CAPTION_LANGUAGE", targetLang: newTarget }, () => void chrome.runtime.lastError)
     } catch (e) {}
     try {
       chrome.runtime.sendMessage({ type: "UPDATE_SOURCE_LANGUAGE", sourceLang: newSource }, () => void chrome.runtime.lastError)

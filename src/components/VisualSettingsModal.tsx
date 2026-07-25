@@ -764,7 +764,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
           const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
           const fuzzyCheck = (target: string, maxDistance = 1) => fuzzyMatch(newSpeech, target, maxDistance)
 
-          if (check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens", "wake up", "hey sensa") || fuzzyCheck("sensa", 1)) {
+          if (check("sensa", "sansa", "sensor", "sensia", "sincere", "center", "censor", "senser", "censer", "sens") || fuzzyCheck("sensa", 1)) {
             ignoreSpeechUntil = Date.now() + 800
             consumedString = liveText
             playClickAudio("Voice commands activated")
@@ -815,7 +815,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
         const fuzzyCheck = (target: string, maxDistance = 1) => fuzzyMatch(newSpeech, target, maxDistance)
 
-        if (check("stop listening", "stop voice", "sleep", "mute", "quiet", "deactivate voice", "deactivate voice command", "deactivate listening")) {
+        if (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening")) {
           ignoreSpeechUntil = Date.now() + 800
           consumedString = liveText
           playClickAudio("Voice commands deactivated")
@@ -828,7 +828,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         let commandFired = false
 
         if (state.isVoiceDropdownOpen) {
-          if (check("close voice selection", "close dropdown", "cancel", "hide voices", "close", "closed", "clothes", "exit", "quit", "dismiss", "duck")) {
+          if (check("close voice selection", "close dropdown", "close", "closed", "clothes")) {
             commandFired = true
             setIsVoiceDropdownOpen(false)
             setSettingsState((next) => { next.isVoiceDropdownOpen = false })
@@ -843,23 +843,21 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
             commandFired = true
           }
         } else {
-          if (check("help", "commands", "options", "what can i say")) {
+          if (check("help", "commands")) {
             commandFired = true
             speakFeedback("Here are the commands. Voice selection. This opens the voice list. Reset. This resets all settings to default. Close. This exits settings.")
-          } else if (check("close settings", "close", "closed", "clothes", "cancel", "back", "exit", "quit", "dismiss", "duck") || fuzzyCheck("close", 1) || fuzzyCheck("exit", 1) || fuzzyCheck("quit", 1)) {
+          } else if (check("close settings", "close", "closed", "clothes") || fuzzyCheck("close", 1)) {
             commandFired = true
             setIsMounted(false)
             setTimeout(() => onCloseRef.current(), 300)
-          } else if (check("reset default", "reset defaults", "restore defaults", "restore default", "reset settings", "restore", "reset", "default") || fuzzyCheck("restore default", 1) || fuzzyCheck("reset default", 1)) {
+          } else if (check("reset default", "reset defaults", "reset settings", "reset", "default") || fuzzyCheck("reset default", 1)) {
             commandFired = true
             handleResetToDefault()
           } else if (
-            check("voice selection", "select voice", "voice voices", "voices", "voice list", "change voice", "choose voice", "show voices", "open voice", "open voice selection", "voice selections", "open voices", "open voice list") ||
+            check("voice selection", "select voice", "voice voices", "voices", "voice list") ||
             fuzzyCheck("voice selection", 2) ||
             fuzzyCheck("select voice", 2) ||
-            fuzzyCheck("change voice", 2) ||
-            fuzzyCheck("choose voice", 2) ||
-            (paddedSpeech.includes(" voice ") && (paddedSpeech.includes(" selection ") || paddedSpeech.includes(" select ") || paddedSpeech.includes(" list ") || paddedSpeech.includes(" choose ") || paddedSpeech.includes(" change ") || paddedSpeech.includes(" open ")))
+            (paddedSpeech.includes(" voice ") && (paddedSpeech.includes(" selection ") || paddedSpeech.includes(" select ") || paddedSpeech.includes(" list ")))
           ) {
             commandFired = true
             setIsVoiceDropdownOpen(true)

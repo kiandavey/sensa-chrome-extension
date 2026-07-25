@@ -75,6 +75,13 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   }, [])
 
+  // Prime voices on mount to ensure Google US English is loaded before user clicks activate
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices()
+    }
+  }, [])
+
   const playHoverSfx = () => {
     const ctx = getAudioContext()
     if (!ctx) return
@@ -164,7 +171,7 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
       const timeoutId = window.setTimeout(() => {
         window.speechSynthesis.removeEventListener("voiceschanged", handleVoicesChanged)
         resolve(window.speechSynthesis.getVoices())
-      }, 800)
+      }, 4000)
 
       const handleVoicesChanged = () => {
         if (checkAndResolve()) {

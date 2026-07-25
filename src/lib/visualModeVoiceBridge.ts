@@ -367,13 +367,13 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
     activateScore += count("activate") * 3
     activateScore += count("start") * 3
 
-    if (check("activate", "start", "enable", "visual mode", "vision mode")) {
+    if (check("activate", "activate visual mode", "visual mode", "vision mode")) {
       activateScore += 6
     } else if (fuzzyMatch(cleanTranscript, "activate", 2) || fuzzyMatch(cleanTranscript, "visual mode", 2) || fuzzyMatch(cleanTranscript, "vision mode", 2)) {
       activateScore += 4
     }
 
-    if (check("deactivate", "stop", "disable", "turn off")) {
+    if (check("deactivate")) {
       activateScore -= 15
     }
 
@@ -383,13 +383,12 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
     deactivateScore += count("deactivate") * 3
 
     if (!isCurrentlyActive) {
-      deactivateScore += count("turn off") * 5
-      deactivateScore += count("stop") * 3
+      deactivateScore += count("deactivate") * 3
     }
 
-    if (check("deactivate", "disable", "deactivate visual mode", "stop visual mode") || (!isCurrentlyActive && check("stop", "turn off"))) {
+    if (check("deactivate", "deactivate visual mode") || (!isCurrentlyActive && check("deactivate"))) {
       deactivateScore += 6
-    } else if (fuzzyMatch(cleanTranscript, "deactivate", 2) || fuzzyMatch(cleanTranscript, "deactivate visual mode", 2) || fuzzyMatch(cleanTranscript, "stop visual mode", 2)) {
+    } else if (fuzzyMatch(cleanTranscript, "deactivate", 2) || fuzzyMatch(cleanTranscript, "deactivate visual mode", 2)) {
       deactivateScore += 4
     }
 

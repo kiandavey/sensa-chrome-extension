@@ -483,6 +483,12 @@ export default function VisualWelcomeOverlay({ theme, onGetStarted }: WelcomePro
   }, [reminderTrigger])
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices()
+    }
+  }, [])
+
+  useEffect(() => {
     return () => {
       narrationCanceledRef.current = true
       if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {

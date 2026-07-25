@@ -280,7 +280,7 @@ const scrubTTS = (text: string): string | null => {
 
   // If the user clearly spoke a mode command keyword, preserve it immediately
   const hasModeKeyword =
-    /\b(visual|vision|bisual|auditory|audio|hearing|option one|option two|number one|number two|first|second|one|two|1|2)\b/.test(cleaned)
+    /\b(visual|vision|bisual|auditory|audio)\b/.test(cleaned)
 
   for (const sentence of TTS_SENTENCES) {
     let safety = 0
@@ -327,11 +327,6 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
       return
     }
 
-    // Anti-Feedback Loop: Do not process audio captured while our own TTS is speaking
-    if (typeof window !== "undefined" && window.speechSynthesis && window.speechSynthesis.speaking) {
-      return
-    }
-
     let interimChunk = ""
     let newFinals = ""
 
@@ -367,43 +362,31 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
     } else if (has("visual") || has("vision") || has("bisual")) {
       visualScore += 8
     }
-    if (has("option one") || has("option 1") || has("first option") || has("number one") || has("number 1") || has("first one") || has("one") || has("1") || has("first")) {
-      visualScore += 10
-    }
 
     if (visualScore === 0) {
       if (
         fuzzyMatch(normalizedTranscript, "visual mode", 2) ||
         fuzzyMatch(normalizedTranscript, "vision mode", 2) ||
         fuzzyMatch(normalizedTranscript, "visual", 1) ||
-        fuzzyMatch(normalizedTranscript, "vision", 1) ||
-        fuzzyMatch(normalizedTranscript, "option one", 1) ||
-        fuzzyMatch(normalizedTranscript, "first option", 1)
+        fuzzyMatch(normalizedTranscript, "vision", 1)
       ) {
         visualScore += 5
       }
     }
 
     // Auditory Mode Cues
-    if (has("auditory mode") || has("audio mode") || has("sound mode") || has("hearing mode")) {
+    if (has("auditory mode") || has("audio mode")) {
       auditoryScore += 15
-    } else if (has("auditory") || has("audio") || has("hearing") || has("sound")) {
+    } else if (has("auditory") || has("audio")) {
       auditoryScore += 8
-    }
-    if (has("option two") || has("option 2") || has("second option") || has("number two") || has("number 2") || has("second one") || has("two") || has("2") || has("second")) {
-      auditoryScore += 10
     }
 
     if (auditoryScore === 0) {
       if (
         fuzzyMatch(normalizedTranscript, "auditory mode", 2) ||
         fuzzyMatch(normalizedTranscript, "audio mode", 2) ||
-        fuzzyMatch(normalizedTranscript, "sound mode", 2) ||
         fuzzyMatch(normalizedTranscript, "auditory", 1) ||
-        fuzzyMatch(normalizedTranscript, "audio", 1) ||
-        fuzzyMatch(normalizedTranscript, "hearing", 1) ||
-        fuzzyMatch(normalizedTranscript, "option two", 1) ||
-        fuzzyMatch(normalizedTranscript, "second option", 1)
+        fuzzyMatch(normalizedTranscript, "audio", 1)
       ) {
         auditoryScore += 5
       }
@@ -422,16 +405,11 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
       const lastVisualIdx = Math.max(
         normalizedTranscript.lastIndexOf("visual"),
         normalizedTranscript.lastIndexOf("vision"),
-        normalizedTranscript.lastIndexOf("bisual"),
-        normalizedTranscript.lastIndexOf("one"),
-        normalizedTranscript.lastIndexOf("1")
+        normalizedTranscript.lastIndexOf("bisual")
       )
       const lastAuditoryIdx = Math.max(
         normalizedTranscript.lastIndexOf("auditory"),
-        normalizedTranscript.lastIndexOf("audio"),
-        normalizedTranscript.lastIndexOf("hearing"),
-        normalizedTranscript.lastIndexOf("two"),
-        normalizedTranscript.lastIndexOf("2")
+        normalizedTranscript.lastIndexOf("audio")
       )
 
       if (lastVisualIdx > lastAuditoryIdx && lastVisualIdx !== -1) {

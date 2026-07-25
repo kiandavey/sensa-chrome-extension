@@ -195,6 +195,12 @@ export default function ModeSelection({ theme, onSelectMode }: ModeSelectionProp
   }, [])
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices()
+    }
+  }, [])
+
+  useEffect(() => {
     let retryTimer: number | null = null
     let isMounted = true
 
