@@ -542,7 +542,7 @@ export function useSpeech(
 
       utterance.onerror = (e) => {
         if (sessionId !== speechSessionRef.current) return;
-        if (e.error !== "canceled") {
+        if (e.error !== "canceled" && e.error !== "interrupted") {
           console.error("Speech error:", e);
         }
         clearSentenceOverlay();

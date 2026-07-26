@@ -487,10 +487,6 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
         const rawTranscript = (globalBuffer + " " + interimChunk).trim()
         if (!rawTranscript) return
 
-        if (Date.now() < ignoreSpeechUntil) {
-          return
-        }
-
         let cleanText = normalizeTranscript(rawTranscript)
         
         if (consumedKeywords.length > 0) {
@@ -500,16 +496,24 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           })
           cleanText = cleanText.replace(/\s+/g, " ").trim()
         }
-        
+
+        if (!cleanText) return
+
+        console.log(`[Sensa Speed Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
+
         const paddedSpeech = ` ${cleanText} `
         const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
         const fuzzyCheck = (target: string, maxDistance = 1) => fuzzyMatch(cleanText, target, maxDistance)
+
+        let matchedCmd = false
 
         const applyCommand = (commandName: string, keywordsToConsume: string[], action: () => void) => {
           if (Date.now() < ignoreSpeechUntil) return
           ignoreSpeechUntil = Date.now() + 800
           lastCommandName = commandName
           consumedKeywords.push(...keywordsToConsume)
+          matchedCmd = true
+          console.log(`[Sensa Speed Voice Bridge] Score results -> Executing command: "${commandName}"`)
           action()
         }
 
@@ -554,6 +558,9 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           return
         }
 
+        if (!matchedCmd) {
+          console.log(`[Sensa Speed Voice Bridge] Score results -> No command matched for transcript: "${cleanText}"`)
+        }
       }
 
       instance.onerror = (event: any) => {

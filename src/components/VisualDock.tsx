@@ -1228,7 +1228,7 @@ export default function VisualDock({
         rawTranscript = rawTranscript.trim()
         if (!rawTranscript) return
 
-        if (rawTranscript === lastCommandTranscript) {
+        if (rawTranscript === lastCommandTranscript && Date.now() - lastCommandTime < 300) {
           return
         }
 
@@ -1250,6 +1250,8 @@ export default function VisualDock({
 
           if (!cleanText) return false
 
+          console.log(`[Sensa Dock Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
+
           const paddedSpeech = ` ${cleanText} `
           const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
           const fuzzyCheck = (target: string, maxDistance = 1) => fuzzyMatch(cleanText, target, maxDistance)
@@ -1262,10 +1264,21 @@ export default function VisualDock({
 
           let shouldProcessCommands = callbacksRef.current.isVoiceCommandActive
 
+          let matchedAnyCommand = false
+
           const applyCommand = (commandName: string, action: () => void) => {
+            matchedAnyCommand = true
+
+            // Block re-executing the exact same command on the exact same SpeechRecognition result index (phrase)
+            if (currentResultIndex === lastCommandResultIndex && commandName === lastCommandName) {
+              console.log(`[Sensa Dock Voice Bridge] Score results -> Ignored re-execution of "${commandName}" for phrase index ${currentResultIndex}`)
+              return
+            }
+
             // Only apply micro-cooldown if repeating the EXACT same command within 250ms.
             // Allow 0ms instant execution when switching to a DIFFERENT command (read -> stop -> read).
             if (commandName === lastCommandName && timeSinceLastCommand < 250) {
+              console.log(`[Sensa Dock Voice Bridge] Score results -> Ignored duplicate command: "${commandName}" (within 250ms cooldown)`)
               return
             }
             if (commandTimeout) {
@@ -1278,6 +1291,7 @@ export default function VisualDock({
               lastCommandResultIndex = currentResultIndex
               lastCommandTranscript = rawTranscript
             }
+            console.log(`[Sensa Dock Voice Bridge] Score results -> Executing command: "${commandName}"`)
             action()
           }
 
@@ -1321,7 +1335,11 @@ export default function VisualDock({
               })
               return true
             }
-            else if (check("speed", "reading speed") || fuzzyCheck("speed", 1)) {
+            else if (check("speed", "reading speed", "breathing speed", "eating speed", "reeding speed", "reed speed") || fuzzyCheck("speed", 1)) {
+              if (commandTimeout) {
+                window.clearTimeout(commandTimeout)
+                commandTimeout = null
+              }
               applyCommand("speed", () => {
                 callbacksRef.current.playClickAudio?.('Reeding speed')
                 callbacksRef.current.onOpenReadingSpeed(true)
@@ -1362,14 +1380,27 @@ export default function VisualDock({
               return true
             }
             else if (((!callbacksRef.current.isPlaying || callbacksRef.current.isPaused) || !callbacksRef.current.isPlayOptimistic || /\b(start reading|read page|read text|read out|start play)\b/i.test(cleanText)) && /\b(read|red|reed|rid|ready|reading|play|resume|continue|start reading)\b/i.test(cleanText)) {
-              if (check("speed", "reading speed")) {
+              if (check("speed", "reading speed", "breathing speed", "eating speed", "reeding speed", "reed speed")) {
                 return false
               }
               if (commandTimeout) {
                 window.clearTimeout(commandTimeout)
                 commandTimeout = null
               }
-              applyCommand("play", () => {
+
+              const isSingleWordRead = cleanText === "read" || cleanText === "reading" || cleanText === "reed" || cleanText === "breathing"
+
+              if (isSingleWordRead) {
+                commandTimeout = window.setTimeout(() => {
+                  commandTimeout = null
+                  applyCommand("read", () => {
+                    callbacksRef.current.handleStartReading()
+                  })
+                }, 200)
+                return true
+              }
+
+              applyCommand("read", () => {
                 callbacksRef.current.handleStartReading()
               })
               return true
@@ -1381,20 +1412,23 @@ export default function VisualDock({
               })
               return true
             }
-            else if (callbacksRef.current.isMinimized && (check("expand", "expend", "span") || fuzzyCheck("expand", 1))) {
+            else if (callbacksRef.current.isMinimized && (check("expand", "maximise", "maximize") || fuzzyCheck("expand", 1))) {
               applyCommand("expand", () => {
                 callbacksRef.current.playClickAudio?.('Expand')
                 callbacksRef.current.onMinimizeToggle()
               })
               return true
             }
-            else if ((check("close") || fuzzyCheck("close", 1)) && !check("deactivate voice", "deactivate voice command", "deactivate listening")) {
+            else if (check("close", "exit", "quit", "deactivate")) {
               applyCommand("close", () => {
-                callbacksRef.current.playClickAudio?.('Visual mode deactivated')
                 callbacksRef.current.onClose()
               })
               return true
             }
+          }
+
+          if (!matchedAnyCommand) {
+            console.log(`[Sensa Dock Voice Bridge] Score results -> No command matched for transcript: "${cleanText}" (isVoiceActive: ${callbacksRef.current.isVoiceCommandActive})`)
           }
 
           return false

@@ -695,28 +695,111 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
       }, 1500)
     }
 
-    const voiceSelectionMatches = (text: string) => {
-      if (isReadingVoiceListRef.current) return false
-      const cleanText = text.toLowerCase()
-      if (cleanText.split(' ').length < 2) return false
-      const matches = overlayStateRef.current.voices.filter((voice) => {
-        const name = (voice.name || "").toLowerCase()
-        const simpleName = simplifyVoiceName(voice.name || "").toLowerCase()
-        if (cleanText === name || cleanText === simpleName) return true
-        return cleanText.includes(name) || name.includes(cleanText) || cleanText.includes(simpleName) || simpleName.includes(cleanText)
-      })
-      if (matches.length === 0) return false
+    const LANG_MAP: Record<string, string[]> = {
+      korean: ["ko", "한국어", "korean"],
+      russian: ["ru", "русский", "russian"],
+      german: ["de", "deutsch", "german"],
+      italian: ["it", "italiano", "italian"],
+      french: ["fr", "français", "french"],
+      spanish: ["es", "español", "spanish"],
+      portuguese: ["pt", "português", "portuguese"],
+      japanese: ["ja", "日本語", "japanese"],
+      chinese: ["zh", "中文", "chinese"],
+      mandarin: ["zh", "普通话", "國語", "国语", "mandarin"],
+      cantonese: ["zh-hk", "粵語", "粤语", "cantonese"],
+      hindi: ["hi", "हिन्दी", "hindi"],
+      dutch: ["nl", "nederlands", "dutch"],
+      polish: ["pl", "polski", "polish"],
+      tagalog: ["tl", "fil", "filipino", "tagalog"],
+      filipino: ["fil", "tl", "filipino", "tagalog"],
+      vietnamese: ["vi", "tiếng việt", "vietnamese"],
+      thai: ["th", "ไทย", "thai"],
+      turkish: ["tr", "türkçe", "turkish"],
+      arabic: ["ar", "العربية", "arabic"],
+      greek: ["el", "ελληνικά", "greek"],
+      hebrew: ["he", "עברית", "hebrew"],
+      swedish: ["sv", "svenska", "swedish"],
+      finnish: ["fi", "suomi", "finnish"],
+      danish: ["da", "dansk", "danish"],
+      norwegian: ["no", "norsk", "norwegian"],
+      czech: ["cs", "čeština", "czech"],
+      hungarian: ["hu", "magyar", "hungarian"],
+      indonesian: ["id", "bahasa indonesia", "indonesian"],
+      ukrainian: ["uk", "українська", "ukrainian"],
+      english: ["en", "english"]
+    }
 
-      if (matches.length > 1 && (cleanText === "google" || cleanText === "microsoft" || cleanText === "apple" || cleanText === "english")) {
+    const voiceSelectionMatches = (text: string) => {
+      const cleanText = text.toLowerCase().trim()
+      if (!cleanText) return false
+
+      // Avoid matching generic brand/category words on their own
+      const genericWords = [
+        "google", "microsoft", "apple", "english", "voice", "voices", "select",
+        "selection", "list", "male", "female", "natural", "desktop", "united", "states"
+      ]
+      if (genericWords.includes(cleanText)) {
         return false
       }
 
-      const matchedVoice = matches[0]
+      let bestVoice: SpeechSynthesisVoice | null = null
+      let maxScore = 0
+
+      for (const voice of overlayStateRef.current.voices) {
+        const fullTitle = (voice.name || "").toLowerCase()
+        const simpleName = simplifyVoiceName(voice.name || "").toLowerCase()
+        const lang = (voice.lang || "").toLowerCase()
+        let score = 0
+
+        // Exact full name or simple name match
+        if (cleanText === fullTitle || cleanText === simpleName) {
+          score += 300
+        }
+
+        // Check mapping for language keywords
+        for (const [langName, aliases] of Object.entries(LANG_MAP)) {
+          if (cleanText.includes(langName)) {
+            if (aliases.some(a => lang.startsWith(a) || fullTitle.includes(a) || simpleName.includes(a))) {
+              score += 150
+            }
+          }
+        }
+
+        // Check specific voice names (David, Mark, Zira, Samantha, Alex, Victoria, etc.)
+        const specificNames = [
+          "david", "mark", "zira", "samantha", "alex", "victoria", "daniel",
+          "fred", "karen", "mora", "rishi", "george", "hazel", "susan", "catherine"
+        ]
+        for (const nameKey of specificNames) {
+          if (cleanText.includes(nameKey) && (fullTitle.includes(nameKey) || simpleName.includes(nameKey))) {
+            score += 150
+          }
+        }
+
+        // Provider matching (google, microsoft, apple)
+        if (cleanText.includes("google") && fullTitle.includes("google")) score += 10
+        if (cleanText.includes("microsoft") && fullTitle.includes("microsoft")) score += 10
+        if (cleanText.includes("apple") && fullTitle.includes("apple")) score += 10
+
+        if (score > maxScore) {
+          maxScore = score
+          bestVoice = voice
+        }
+      }
+
+      // Require threshold score of >= 100 to prevent premature matching on partial interim words (e.g. 'google russ', 'google kore')
+      if (!bestVoice || maxScore < 100) return false
+
+      const matchedVoice = bestVoice
+
+      // Cancel ongoing sequential TTS narration instantly if user speaks a voice name
+      window.speechSynthesis.cancel()
+      isReadingVoiceListRef.current = false
+
       setSelectedVoiceURI(matchedVoice.voiceURI)
       setSpeakingVoiceURI(matchedVoice.voiceURI)
       chrome.storage.local.set({ sensa_visual_voice_uri: matchedVoice.voiceURI, sensa_visual_voice_name: matchedVoice.name || "" })
       setIsVoiceDropdownOpen(true)
-      window.speechSynthesis.cancel()
       speakFeedback(`${simplifyVoiceName(matchedVoice.name || "")} selected`)
       setSettingsState((state) => {
         state.selectedVoiceURI = matchedVoice.voiceURI
@@ -807,6 +890,8 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
         if (!newSpeech) return
 
+        console.log(`[Sensa Settings Voice Bridge] Heard transcript: "${newSpeech}" (Raw: "${liveText}")`)
+
         if (Date.now() < ignoreSpeechUntil) {
           consumedString = liveText
           return
@@ -818,6 +903,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         if (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening")) {
           ignoreSpeechUntil = Date.now() + 800
           consumedString = liveText
+          console.log(`[Sensa Settings Voice Bridge] Score results -> Executing command: "deactivate-voice"`)
           playClickAudio("Voice commands deactivated")
           onToggleVoiceCommand?.()
           return
@@ -826,40 +912,49 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
         const state = overlayStateRef.current
         let commandFired = false
+        let matchedCmdName = ""
 
         if (state.isVoiceDropdownOpen) {
           if (check("close voice selection", "close dropdown", "close", "closed", "clothes")) {
             commandFired = true
+            matchedCmdName = "close voice selection"
             setIsVoiceDropdownOpen(false)
             setSettingsState((next) => { next.isVoiceDropdownOpen = false })
             speakFeedback("Voice selection closed")
           } else if (check("next voice", "voice next", "next selection")) {
             commandFired = true
+            matchedCmdName = "next voice"
             cycleVoice(1)
           } else if (check("previous voice", "prev voice", "last voice")) {
             commandFired = true
+            matchedCmdName = "previous voice"
             cycleVoice(-1)
           } else if (voiceSelectionMatches(newSpeech)) {
             commandFired = true
+            matchedCmdName = "select specific voice"
           }
         } else {
           if (check("help", "commands")) {
             commandFired = true
+            matchedCmdName = "help"
             speakFeedback("Here are the commands. Voice selection. This opens the voice list. Reset. This resets all settings to default. Close. This exits settings.")
           } else if (check("close settings", "close", "closed", "clothes") || fuzzyCheck("close", 1)) {
             commandFired = true
+            matchedCmdName = "close settings"
             setIsMounted(false)
             setTimeout(() => onCloseRef.current(), 300)
           } else if (check("reset default", "reset defaults", "reset settings", "reset", "default") || fuzzyCheck("reset default", 1)) {
             commandFired = true
+            matchedCmdName = "reset to default"
             handleResetToDefault()
           } else if (
-            check("voice selection", "select voice", "voice voices", "voices", "voice list") ||
+            check("voice selection", "voice election", "vice election", "three selection", "free selection", "boys selection", "voice select", "select voice", "voice voices", "voices", "voice list", "open voice") ||
             fuzzyCheck("voice selection", 2) ||
             fuzzyCheck("select voice", 2) ||
-            (paddedSpeech.includes(" voice ") && (paddedSpeech.includes(" selection ") || paddedSpeech.includes(" select ") || paddedSpeech.includes(" list ")))
+            (paddedSpeech.includes(" voice ") && (paddedSpeech.includes(" selection ") || paddedSpeech.includes(" election ") || paddedSpeech.includes(" select ") || paddedSpeech.includes(" list ")))
           ) {
             commandFired = true
+            matchedCmdName = "open voice selection"
             setIsVoiceDropdownOpen(true)
             setSettingsState((next) => { next.isVoiceDropdownOpen = true })
 
@@ -872,7 +967,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
               const defaultUri = selectedVoiceURIRef.current || defaultVoiceURIRef.current
               const defaultVoiceObj = (defaultUri ? allVoices.find((v) => v.voiceURI === defaultUri) : undefined) || allVoices.find((v) => v.name.includes("Google US English")) || allVoices.find((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David")) || allVoices.find((v) => v.lang === "en-US" || v.lang.startsWith("en")) || allVoices[0]
 
-              const intro = new SpeechSynthesisUtterance("Voice selection opened. You can choose from:")
+              const intro = new SpeechSynthesisUtterance("Voice selection opened. Reading voices:")
               if (defaultVoiceObj) {
                 intro.voice = defaultVoiceObj
                 intro.lang = defaultVoiceObj.lang
@@ -904,6 +999,9 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
         if (commandFired) {
           consumedString = liveText
+          console.log(`[Sensa Settings Voice Bridge] Score results -> Executing command: "${matchedCmdName}"`)
+        } else {
+          console.log(`[Sensa Settings Voice Bridge] Score results -> No command matched for transcript: "${newSpeech}"`)
         }
       }
 
@@ -1492,12 +1590,12 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
                   role="option"
                   aria-selected={selectedVoiceURI === voice.voiceURI}
                   className={`px-4 py-2.5 cursor-pointer block w-full text-left truncate transition-all font-medium m-1 rounded-lg ${speakingVoiceURI === voice.voiceURI
-                      ? "bg-[#0A44FF]/30 text-[#0A44FF] shadow-inner border border-[#0A44FF]/50"
-                      : selectedVoiceURI === voice.voiceURI
-                        ? "bg-gradient-to-r from-[#0A44FF] to-[#0099FF] text-white shadow-md"
-                        : isDark
-                          ? "text-gray-200 hover:bg-[#0A44FF]/20 hover:text-[#0A44FF]"
-                          : "text-gray-700 hover:bg-[#0A44FF]/10 hover:text-[#0A44FF]"
+                    ? "bg-[#0A44FF]/30 text-[#0A44FF] shadow-inner border border-[#0A44FF]/50"
+                    : selectedVoiceURI === voice.voiceURI
+                      ? "bg-gradient-to-r from-[#0A44FF] to-[#0099FF] text-white shadow-md"
+                      : isDark
+                        ? "text-gray-200 hover:bg-[#0A44FF]/20 hover:text-[#0A44FF]"
+                        : "text-gray-700 hover:bg-[#0A44FF]/10 hover:text-[#0A44FF]"
                     }`}
                   onMouseEnter={() => { playHoverSfx(); previewVoice(voice) }}
                   onClick={() => { handleVoiceChange(voice.voiceURI); setIsVoiceDropdownOpen(false); window.speechSynthesis.cancel() }}
