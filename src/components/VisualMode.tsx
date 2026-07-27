@@ -152,14 +152,20 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
 
   const waitForVoices = () =>
     new Promise<SpeechSynthesisVoice[]>((resolve) => {
+      let attempts = 0
+      let intervalId: number
+
       const checkAndResolve = () => {
         const voices = window.speechSynthesis.getVoices()
         if (voices.length === 0) return false
         const hasPreferredOrGoogle =
           (selectedVoiceURIRef.current && voices.some((v) => v.voiceURI === selectedVoiceURIRef.current && !v.name.includes("David"))) ||
           (selectedVoiceNameRef.current && voices.some((v) => (v.name === selectedVoiceNameRef.current || v.name?.includes(selectedVoiceNameRef.current)) && !v.name.includes("David"))) ||
-          voices.some((v) => v.name.includes("Google US English"))
+          voices.some((v) => v.name.includes("Google US English")) ||
+          voices.some((v) => v.name.includes("Google"))
         if (hasPreferredOrGoogle) {
+          if (intervalId !== undefined) window.clearInterval(intervalId)
+          window.speechSynthesis.removeEventListener("voiceschanged", checkAndResolve)
           resolve(voices)
           return true
         }
@@ -168,19 +174,24 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
 
       if (checkAndResolve()) return
 
-      const timeoutId = window.setTimeout(() => {
-        window.speechSynthesis.removeEventListener("voiceschanged", handleVoicesChanged)
-        resolve(window.speechSynthesis.getVoices())
-      }, 4000)
+      window.speechSynthesis.addEventListener("voiceschanged", checkAndResolve)
 
-      const handleVoicesChanged = () => {
-        if (checkAndResolve()) {
-          window.clearTimeout(timeoutId)
-          window.speechSynthesis.removeEventListener("voiceschanged", handleVoicesChanged)
+      // KICKSTART CHROME TTS ENGINE
+      try {
+        const dummy = new SpeechSynthesisUtterance("");
+        dummy.volume = 0;
+        dummy.rate = 10;
+        window.speechSynthesis.speak(dummy);
+      } catch (e) {}
+
+      intervalId = window.setInterval(() => {
+        if (checkAndResolve()) return
+        if (attempts++ >= 50) { // 10 seconds timeout
+          window.clearInterval(intervalId)
+          window.speechSynthesis.removeEventListener("voiceschanged", checkAndResolve)
+          resolve(window.speechSynthesis.getVoices())
         }
-      }
-
-      window.speechSynthesis.addEventListener("voiceschanged", handleVoicesChanged)
+      }, 200)
     })
 
   const getStoredVoicePreference = () =>
@@ -236,7 +247,7 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
         availableVoices[0]
     }
 
-    if (preferredVoice && !preferredVoice.name.includes("David") && (selectedVoiceNameRef.current?.includes("David") || selectedVoiceURIRef.current?.includes("David"))) {
+    if (preferredVoice && !preferredVoice.name.includes("David") && !preferredVoice.name.includes("Mark") && (selectedVoiceNameRef.current?.includes("David") || selectedVoiceURIRef.current?.includes("David") || selectedVoiceNameRef.current?.includes("Mark") || selectedVoiceURIRef.current?.includes("Mark"))) {
       chrome.storage.local.set({ sensa_visual_voice_uri: preferredVoice.voiceURI, sensa_visual_voice_name: preferredVoice.name })
       selectedVoiceURIRef.current = preferredVoice.voiceURI
       selectedVoiceNameRef.current = preferredVoice.name

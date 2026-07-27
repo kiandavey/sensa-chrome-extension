@@ -73,7 +73,7 @@ export function useUIHoverAudio() {
 
 	const clearVoiceRetry = useCallback(() => {
 		if (voiceRetryTimerRef.current !== null) {
-			window.clearTimeout(voiceRetryTimerRef.current)
+			window.clearInterval(voiceRetryTimerRef.current)
 			voiceRetryTimerRef.current = null
 		}
 		pendingUtteranceRef.current = null
@@ -87,7 +87,7 @@ export function useUIHoverAudio() {
 		if (!isActiveRef.current || !isVoiceGuideEnabledRef.current || !isStorageLoadedRef.current) return
 		if (!text.trim()) return
 
-		const speakNow = () => {
+		const speakNow = (preferredVoice: SpeechSynthesisVoice | undefined) => {
 			window.speechSynthesis.resume()
 			if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
 				window.speechSynthesis.cancel()
@@ -96,16 +96,6 @@ export function useUIHoverAudio() {
 			isHoverSpeakingRef.current = true
 
 			const utterance = new SpeechSynthesisUtterance(text)
-			const voices = window.speechSynthesis.getVoices()
-			const preferredVoice =
-				voices.find((voice) => !voice.name.includes("David") && voice.voiceURI === selectedVoiceURIRef.current) ||
-				voices.find((voice) => !voice.name.includes("David") && voice.name === selectedVoiceNameRef.current) ||
-				voices.find((voice) => !voice.name.includes("David") && selectedVoiceNameRef.current && voice.name.includes(selectedVoiceNameRef.current)) ||
-				voices.find((voice) => voice.name.includes("Google US English")) ||
-				voices.find((voice) => (voice.lang === "en-US" || voice.lang.startsWith("en")) && !voice.name.includes("David")) ||
-				voices.find((voice) => voice.lang === "en-US" || voice.lang.startsWith("en")) ||
-				voices[0]
-
 			if (preferredVoice) {
 				utterance.voice = preferredVoice
 				utterance.lang = preferredVoice.lang
@@ -124,34 +114,32 @@ export function useUIHoverAudio() {
 			window.speechSynthesis.speak(utterance)
 		}
 
-		const availableVoices = window.speechSynthesis.getVoices()
-		if (!availableVoices.length) {
-			clearVoiceRetry()
-			pendingUtteranceRef.current = text
+		clearVoiceRetry()
+		let attempts = 0
 
-			const handleVoicesChanged = () => {
-				if (!isActiveRef.current) return
-				const pending = pendingUtteranceRef.current
-				if (!pending) return
-				pendingUtteranceRef.current = null
-				clearVoiceRetry()
-				speakWithResolvedVoice(pending, owner, rate)
+		const checkAndSpeak = () => {
+			if (!isActiveRef.current) return true
+			const voices = window.speechSynthesis.getVoices()
+			if (voices.length === 0) return false
+
+			const hasPreferredOrGoogle =
+				(selectedVoiceURIRef.current && voices.some((v) => v.voiceURI === selectedVoiceURIRef.current && !v.name.includes("David"))) ||
+				(selectedVoiceNameRef.current && voices.some((v) => (v.name === selectedVoiceNameRef.current || v.name?.includes(selectedVoiceNameRef.current)) && !v.name.includes("David"))) ||
+				voices.some((v) => v.name.includes("Google US English")) ||
+				voices.some((v) => v.name.includes("Google"))
+
+			if (hasPreferredOrGoogle) {
+				const preferredVoice =
+					voices.find((voice) => !voice.name.includes("David") && voice.voiceURI === selectedVoiceURIRef.current) ||
+					voices.find((voice) => !voice.name.includes("David") && voice.name === selectedVoiceNameRef.current) ||
+					voices.find((voice) => !voice.name.includes("David") && selectedVoiceNameRef.current && voice.name.includes(selectedVoiceNameRef.current)) ||
+					voices.find((voice) => voice.name.includes("Google US English")) ||
+					voices.find((voice) => voice.name.includes("Google"))
+				
+				speakNow(preferredVoice)
+				return true
 			}
-
-			voicesChangedHandlerRef.current = handleVoicesChanged
-			window.speechSynthesis.addEventListener("voiceschanged", handleVoicesChanged)
-
-			voiceRetryTimerRef.current = window.setTimeout(() => {
-				voiceRetryTimerRef.current = null
-				if (!isActiveRef.current) return
-				const pending = pendingUtteranceRef.current
-				if (!pending) return
-				pendingUtteranceRef.current = null
-				clearVoiceRetry()
-				speakWithResolvedVoice(pending, owner, rate)
-			}, 800)
-
-			return
+			return false
 		}
 
 		// Click announcements always preempt; hover waits for non-hover speech (e.g. screen reader).
@@ -163,7 +151,39 @@ export function useUIHoverAudio() {
 			return
 		}
 
-		speakNow()
+		if (checkAndSpeak()) return
+
+		const handleVoicesChanged = () => {
+			if (checkAndSpeak()) {
+				clearVoiceRetry()
+			}
+		}
+
+		voicesChangedHandlerRef.current = handleVoicesChanged
+		window.speechSynthesis.addEventListener("voiceschanged", handleVoicesChanged)
+
+		// KICKSTART CHROME TTS ENGINE
+		try {
+			const dummy = new SpeechSynthesisUtterance("");
+			dummy.volume = 0;
+			dummy.rate = 10;
+			window.speechSynthesis.speak(dummy);
+		} catch (e) {}
+
+		voiceRetryTimerRef.current = window.setInterval(() => {
+			if (checkAndSpeak() || attempts++ >= 50) { // 10 seconds timeout
+				clearVoiceRetry()
+				if (attempts >= 50 && isActiveRef.current) {
+					const voices = window.speechSynthesis.getVoices()
+					const fallbackVoice =
+						voices.find((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David")) ||
+						voices.find((v) => v.lang === "en-US" || v.lang.startsWith("en")) ||
+						voices[0]
+					speakNow(fallbackVoice)
+				}
+			}
+		}, 200)
+
 	}, [clearVoiceRetry])
 
 	const cancelHoverAudio = useCallback(() => {

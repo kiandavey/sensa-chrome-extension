@@ -319,26 +319,44 @@ export default function FloatingDockManager() {
 
       // Otherwise wait for network voices (Google) to load
       let resolved = false
-      const timeoutId = window.setTimeout(() => {
-        if (resolved) return
-        resolved = true
-        window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged)
-        doSpeak(resolveVoice(window.speechSynthesis.getVoices()))
-      }, 1500)
+      let attempts = 0
+      let intervalId: number
 
-      const onVoicesChanged = () => {
-        if (resolved) return
+      const checkAndSpeak = () => {
+        if (resolved) return true
         const freshVoices = window.speechSynthesis.getVoices()
         const freshPreferred = resolveVoice(freshVoices)
         if (isGoodVoice(freshPreferred)) {
           resolved = true
-          window.clearTimeout(timeoutId)
-          window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged)
+          if (intervalId !== undefined) window.clearInterval(intervalId)
+          window.speechSynthesis.removeEventListener("voiceschanged", checkAndSpeak)
           doSpeak(freshPreferred)
+          return true
         }
+        return false
       }
 
-      window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged)
+      window.speechSynthesis.addEventListener("voiceschanged", checkAndSpeak)
+
+      // KICKSTART CHROME TTS ENGINE:
+      // Chrome on Windows often fails to load network voices (like Google US English)
+      // until a speech utterance is actually requested. This dummy utterance forces it.
+      try {
+        const dummy = new SpeechSynthesisUtterance("");
+        dummy.volume = 0;
+        dummy.rate = 10;
+        window.speechSynthesis.speak(dummy);
+      } catch (e) {}
+
+      intervalId = window.setInterval(() => {
+        if (checkAndSpeak()) return
+        if (attempts++ >= 50) { // 10 seconds timeout
+          resolved = true
+          window.clearInterval(intervalId)
+          window.speechSynthesis.removeEventListener("voiceschanged", checkAndSpeak)
+          doSpeak(resolveVoice(window.speechSynthesis.getVoices()))
+        }
+      }, 200)
     })
   }
 
@@ -565,7 +583,7 @@ export default function FloatingDockManager() {
           setIsCaptionLanguageOpen(false)
           setIsTextSizeOpen(false)
           setIsCaptionTransparencyOpen(false)
-          speakOverlayFeedback("Visual mode activated")
+          // speakOverlayFeedback("Visual mode activated")
         } else if (!nextVisual && prevVisual) {
           setActiveMode(null)
           setIsVisualSettingsOpen(false)
@@ -576,7 +594,7 @@ export default function FloatingDockManager() {
             startVisualModeVoiceListener()
           }
           if (!nextAuditory) {
-            speakOverlayFeedback("Visual mode deactivated")
+            // speakOverlayFeedback("Visual mode deactivated")
           }
         }
       }

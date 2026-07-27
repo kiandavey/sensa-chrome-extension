@@ -238,7 +238,7 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
     const normalizedTranscript = normalizeInput(rawTranscript)
     if (!normalizedTranscript) return
 
-    tabLog(`[Sensa Welcome Tab Voice Bridge] Heard transcript: "${normalizedTranscript}" (Raw: "${rawTranscript}")`)
+    tabLog(`[Sensa Welcome Voice Bridge] Heard transcript: "${normalizedTranscript}" (Raw: "${rawTranscript}")`)
 
     // Score "Enter / Proceed / Start / Go / Get Started"
     let proceedScore = 0
@@ -256,11 +256,12 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
       proceedScore += 3
     }
 
-
-    tabLog(`[Sensa Welcome Tab Voice Bridge] proceedScore: ${proceedScore}`)
+    const chosenCmd = proceedScore >= 3 ? "get started" : null
+    tabLog(`[Sensa Welcome Voice Bridge] Score results -> proceedScore: ${proceedScore}, chosenCommand: ${chosenCmd}`)
 
     if (proceedScore >= 3) {
       globalBuffer = ""
+      tabLog(`[Sensa Welcome Voice Bridge] Executing command: "get started"`)
       applyWelcomeProceed()
     }
   }

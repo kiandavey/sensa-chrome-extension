@@ -581,8 +581,10 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
               typeof stored.sensa_visual_voice_uri === "string" &&
               stored.sensa_visual_voice_uri.length > 0 &&
               !stored.sensa_visual_voice_uri.includes("David") &&
-              !stored.sensa_visual_voice_name?.includes("David")
-            if (!hasValidStored && defaultVoice.voiceURI && !defaultVoice.name.includes("David")) {
+              !stored.sensa_visual_voice_name?.includes("David") &&
+              !stored.sensa_visual_voice_uri.includes("Mark") &&
+              !stored.sensa_visual_voice_name?.includes("Mark")
+            if (!hasValidStored && defaultVoice.voiceURI && !defaultVoice.name.includes("David") && !defaultVoice.name.includes("Mark")) {
               chrome.storage.local.set({ sensa_visual_voice_uri: defaultVoice.voiceURI, sensa_visual_voice_name: defaultVoice.name || "" })
             }
             defaultVoiceAppliedRef.current = true

@@ -348,7 +348,7 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
     const normalizedTranscript = normalizeInput(scrubbedText)
     if (!normalizedTranscript) return
 
-    tabLog(`[Sensa Tab Voice Bridge] Scoring transcript: "${normalizedTranscript}" (Raw: "${currentSpeech}")`)
+    tabLog(`[Sensa Mode Selection Voice Bridge] Heard transcript: "${normalizedTranscript}" (Raw: "${currentSpeech}")`)
 
     // --- Scoring ---
     let visualScore = 0
@@ -419,8 +419,10 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
       }
     }
 
+    tabLog(`[Sensa Mode Selection Voice Bridge] Score results -> Visual: ${visualScore}, Auditory: ${auditoryScore}, chosenCommand: ${chosenCommand}`)
+
     if (chosenCommand) {
-      tabLog(`[Sensa Mode Selection Tab Voice Bridge] Command detected: "${chosenCommand}" (visualScore=${visualScore}, auditoryScore=${auditoryScore}). Applying immediately.`)
+      tabLog(`[Sensa Mode Selection Voice Bridge] Executing command: "${chosenCommand}"`)
       applyModeSelection(chosenCommand)
     }
   }

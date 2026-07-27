@@ -228,6 +228,7 @@ const applyCommand = (command: "activate" | "deactivate" | "auditory") => {
       sensa_voice_command_active: false
     }, () => {
       chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: "visual" }, () => void chrome.runtime.lastError)
+      speakFeedbackInTab("Visual mode activated")
       tabLog("[Sensa Tab Voice Bridge] Visual mode activated via voice.")
     })
   } else if (command === "deactivate") {
@@ -236,6 +237,7 @@ const applyCommand = (command: "activate" | "deactivate" | "auditory") => {
       sensa_voice_command_active: false
     }, () => {
       chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: null }, () => void chrome.runtime.lastError)
+      speakFeedbackInTab("Visual mode deactivated")
       tabLog("[Sensa Tab Voice Bridge] Visual mode deactivated via voice.")
     })
   } else if (command === "auditory") {
@@ -491,14 +493,26 @@ export async function startVisualModeVoiceListener(): Promise<boolean> {
   globalBuffer = ""
 
   chrome.storage.onChanged.addListener(handleStorageChange)
+  document.addEventListener("visibilitychange", handleVisibilityChange)
 
-  // Start priming in parallel so we don't block the SpeechRecognition initialization
-  primeMicrophone().catch((e) => {
-    tabLog(`[Sensa Tab Voice Bridge] Visual mode failed to acquire microphone permissions: ${e}`, "warn")
-  })
+  if (document.visibilityState === "visible") {
+    // Start priming in parallel so we don't block the SpeechRecognition initialization
+    primeMicrophone().catch((e) => {
+      tabLog(`[Sensa Tab Voice Bridge] Visual mode failed to acquire microphone permissions: ${e}`, "warn")
+    })
 
-  buildAndStart()
+    buildAndStart()
+  }
   return true
+}
+
+const handleVisibilityChange = () => {
+  if (!isActive) return
+  if (document.visibilityState === "visible") {
+    buildAndStart()
+  } else {
+    teardownRecognition()
+  }
 }
 
 export function stopVisualModeVoiceListener() {
@@ -511,6 +525,7 @@ export function stopVisualModeVoiceListener() {
   currentResultIndex = 0
   teardownRecognition()
   chrome.storage.onChanged.removeListener(handleStorageChange)
+  document.removeEventListener("visibilitychange", handleVisibilityChange)
 }
 
 function whitespaced(str: string): string {

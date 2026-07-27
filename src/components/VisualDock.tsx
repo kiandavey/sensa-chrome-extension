@@ -112,6 +112,7 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
     let dataArray: Uint8Array | null = null
     let smoothedEnergy = 0
     let lastTime = performance.now()
+    let isMicRunning = false
 
     const ENERGY_GATE = 0.015
 
@@ -127,6 +128,8 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
     const idleHeights = [4, 6, 8, 6, 4]
 
     const stopMic = () => {
+      if (!isMicRunning) return
+      isMicRunning = false
       if (stream) {
         stream.getTracks().forEach((track) => track.stop())
         stream = null
@@ -141,7 +144,9 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
     }
 
     const startMic = async () => {
+      if (isMicRunning) return
       try {
+        isMicRunning = true
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             noiseSuppression: true,
@@ -239,10 +244,23 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
       })
     }
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (isActive) startMic()
+      } else {
+        stopMic()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
     animationId = requestAnimationFrame(draw)
-    if (isActive) startMic()
+    if (isActive && document.visibilityState === "visible") {
+      startMic()
+    }
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
       cancelAnimationFrame(animationId)
       stopMic()
     }
@@ -1775,7 +1793,7 @@ export default function VisualDock({
           type="button"
           onClick={() => {
             playClickSfx()
-            playClickAudio('Visual mode deactivated')
+            // playClickAudio('Visual mode deactivated')
             onClose()
           }}
           className={closeBtnClass}
