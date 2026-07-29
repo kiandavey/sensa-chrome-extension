@@ -398,7 +398,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
       }
     }
 
-    const scheduleRestart = () => {
+    const scheduleRestart = (hard = true) => {
       if (!isComponentMounted || isPermanentlyDead) return
       if (!isExtensionContextValid()) {
         isPermanentlyDead = true
@@ -407,17 +407,23 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
       }
       if (restartTimer) window.clearTimeout(restartTimer)
       restartTimer = window.setTimeout(() => {
-        if (!recognition || !isComponentMounted) return
-        try { 
-          recognition.start() 
-        } catch (e: any) { 
-          if (e && e.name === 'InvalidStateError') {
-            restartTimer = window.setTimeout(scheduleRestart, 400)
-            return
-          }
-          restartTimer = window.setTimeout(scheduleRestart, 1000)
+        if (!isComponentMounted) return
+        
+        if (hard) {
+          teardownRecognition()
+          buildRecognition()
         }
-      }, 300)
+
+        try { 
+          recognition?.start() 
+        } catch (e: any) { 
+          if (!hard) {
+            scheduleRestart(true)
+          } else {
+            restartTimer = window.setTimeout(() => scheduleRestart(true), 400)
+          }
+        }
+      }, hard ? 300 : 50)
     }
 
 
@@ -548,13 +554,13 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           return
         }
 
-        if (check("increase")) {
-          applyCommand("increase", ["increase"], () => applySpeed(speedRef.current + 0.25))
+        if (check("increase", "in greece", "in crease") || fuzzyCheck("increase", 1)) {
+          applyCommand("increase", ["increase", "in greece", "in crease"], () => applySpeed(speedRef.current + 0.25))
           return
         }
 
-        if (check("decrease")) {
-          applyCommand("decrease", ["decrease"], () => applySpeed(speedRef.current - 0.25))
+        if (check("decrease", "the grease", "degrees", "de grease", "the crease", "de crease") || fuzzyCheck("decrease", 1)) {
+          applyCommand("decrease", ["decrease", "the grease", "degrees", "de grease", "the crease", "de crease"], () => applySpeed(speedRef.current - 0.25))
           return
         }
 
@@ -565,18 +571,18 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
 
       instance.onerror = (event: any) => {
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          window.setTimeout(scheduleRestart, 1500)
+          window.setTimeout(() => scheduleRestart(true), 1500)
           return
         }
-        if (event.error === "aborted") {
-          scheduleRestart()
+        if (event.error === "aborted" || event.error === "no-speech") {
+          scheduleRestart(false)
           return
         }
-        scheduleRestart()
+        scheduleRestart(true)
       }
 
       instance.onend = () => {
-        scheduleRestart()
+        scheduleRestart(false)
       }
 
       recognition = instance

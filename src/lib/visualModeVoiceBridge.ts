@@ -81,13 +81,13 @@ const buildAndStart = () => {
   try {
     instance.start()
   } catch {
-    scheduleRestart()
+    scheduleRestart(true)
   }
 }
 
 let visualRestartAttempts = 0
 
-const scheduleRestart = () => {
+const scheduleRestart = (hard = true) => {
   if (!isActive) return
   if (!isExtensionContextValid()) {
     isActive = false
@@ -95,6 +95,18 @@ const scheduleRestart = () => {
     return
   }
   clearRestartTimer()
+
+  if (!hard) {
+    restartTimer = window.setTimeout(() => {
+      try {
+        recognition?.start()
+      } catch (e: any) {
+        scheduleRestart(true)
+      }
+    }, 50)
+    return
+  }
+
   const delay = Math.min(500 * Math.pow(2, visualRestartAttempts), 5000)
   visualRestartAttempts++
   restartTimer = window.setTimeout(buildAndStart, delay)
@@ -457,11 +469,11 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
       chrome.storage.onChanged.removeListener(handleStorageChange)
       return
     }
-    scheduleRestart()
+    scheduleRestart(true)
   }
 
   instance.onend = () => {
-    scheduleRestart()
+    scheduleRestart(false)
   }
 }
 

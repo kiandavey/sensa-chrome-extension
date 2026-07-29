@@ -1457,7 +1457,7 @@ export default function VisualDock({
 
       instance.onerror = (event: any) => {
         if (event.error === "aborted" || event.error === "no-speech") {
-          scheduleRestart(50)
+          scheduleRestart(50, false)
           return
         }
         console.error("[Sensa VisualDock SpeechRecognition Error]", event.error)
@@ -1465,17 +1465,17 @@ export default function VisualDock({
           isPermanentlyDead = true
           return
         }
-        scheduleRestart(100)
+        scheduleRestart(100, true)
       }
 
       instance.onend = () => {
-        scheduleRestart(50)
+        scheduleRestart(50, false)
       }
 
       try {
         instance.start()
       } catch (e: any) {
-        scheduleRestart(50)
+        scheduleRestart(50, true)
       }
     }
 
@@ -1491,7 +1491,7 @@ export default function VisualDock({
       }
     }
 
-    const scheduleRestart = (delay = 50) => {
+    const scheduleRestart = (delay = 50, hard = true) => {
       if (!isComponentMounted || isPermanentlyDead) return
       if (!isExtensionContextValid()) {
         isPermanentlyDead = true
@@ -1500,7 +1500,16 @@ export default function VisualDock({
       }
       if (restartTimer) window.clearTimeout(restartTimer)
       restartTimer = window.setTimeout(() => {
-        buildAndStart()
+        if (!isComponentMounted) return
+        if (hard) {
+          buildAndStart()
+        } else {
+          try {
+            recognition?.start()
+          } catch (e: any) {
+            buildAndStart()
+          }
+        }
       }, delay)
     }
 
