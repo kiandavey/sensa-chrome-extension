@@ -49,10 +49,15 @@ The modern web is primarily designed for unimpaired audio-visual consumption. Us
   * Injects Web Speech API (`SpeechRecognition`) listeners directly into host pages to enable zero-click navigation.
   * Users can activate or deactivate modes, switch to Auditory Mode, or adjust narration speeds simply by speaking commands (e.g., *"activate"*, *"deactivate"*, *"auditory mode"*, *"faster"*, *"slower"*).
   * Features a **3000ms confirmation window** during onboarding to prevent ambient room noise from triggering unintended mode selections.
-* **🧠 Levenshtein Fuzzy Scoring Engine:**
+  * **Multi-Tab Microphone Guard:** Uses the Page Visibility API to dynamically pause and resume microphone streams as users switch tabs, preventing cross-tab mic contention and eliminating persistent browser recording indicators.
+  * **Soft Restart Architecture:** Implements a sub-50ms engine restart strategy to bypass the standard 3-5 second network dropouts inherent to the Web Speech API, maintaining a continuous, ultra-responsive listening state.
+* **🧠 Levenshtein Fuzzy Scoring Engine & Phonetic Mapping:**
   * Implements weighted Levenshtein distance algorithms and N-gram token matching to resolve vocal ambiguities and speech-to-text phonetic collisions (e.g., distinguishing between *"inter"* / *"center"* and *"enter"*).
+  * Employs hard-coded phonetic dictionaries to catch and auto-correct notorious Web Speech API misinterpretations (e.g., mapping *"in greece"* to *"increase"* or *"degrees"* to *"decrease"*).
+  * Features aggressive Phrase Index Guarding and command debouncing (200ms buffers) to filter out rapid duplicate callbacks from Chrome's STT pipeline.
 * **📖 Smart Reader & TTS Narration (`useSpeech.ts` & `ReadingSpeedOverlay.tsx`):**
   * Reads web page text aloud using `window.speechSynthesis` with selectable system voices and real-time reading speed controls (0.5x to 2.0x).
+  * Utilizes robust fallback initialization and Chromium dummy-utterance "kickstarts" to guarantee high-quality network voices (e.g., Google US English) bypass legacy fallback voices like Microsoft Mark.
   * Triggers immediate auditory sample previews whenever speed settings are adjusted.
 * **🔍 Interactive Screen Magnifier (`Magnifier.tsx`):**
   * Creates a responsive, high-contrast magnifying lens that enlarges text and DOM elements on hover for users with low vision.
@@ -70,7 +75,8 @@ The modern web is primarily designed for unimpaired audio-visual consumption. Us
 graph TD
     subgraph Chrome Extension [Client: Plasmo MV3 Extension]
         UI[Dashboard / UI Overlays]
-        TC[chrome.tabCapture]
+        TC[chrome.tabCapture via background.ts]
+        AP[audioproxy.html / Offscreen Document]
         AC[AudioContext & GainNode]
         STT_Client[WebSocket PCM Streamer]
         TTS[Web Speech API / Synthesis]
@@ -88,7 +94,8 @@ graph TD
         AZ[Azure Translator API]
     end
 
-    TC -->|Tab Audio| AC
+    TC -->|Media Stream ID| AP
+    AP -->|Stream| AC
     AC -->|16kHz Linear16 PCM| STT_Client
     STT_Client <==>|Bi-directional WebSocket| WSS
     WSS <==>|Audio Packets| DG
@@ -96,7 +103,7 @@ graph TD
     WSS -->|Finalized Utterances| Azure_Proxy
     Azure_Proxy <==>|Text / Target Lang| AZ
     WSS -->|TRANSCRIPT + Translation| STT_Client
-    STT_Client -->|Render Subtitles| UI
+    STT_Client -->|Forward via Background| UI
     DOM <==>|Voice Commands / Fuzzy Match| TTS
 ```
 
@@ -112,6 +119,9 @@ graph TD
 ```text
 sensa-chrome-extension/
 ├── src/
+│   ├── background.ts               # Background Service Worker (Tab Capture & Routing)
+│   ├── content.tsx                 # Plasmo UI Root (Shadow DOM Injection)
+│   ├── style.css                   # Tailwind CSS design system & tokens
 │   ├── components/                 # UI Overlays & Modal Panels
 │   │   ├── AuditoryDock.tsx        # Control dock for Auditory Mode
 │   │   ├── VisualDock.tsx          # Control dock for Visual Mode
@@ -121,10 +131,20 @@ sensa-chrome-extension/
 │   │   ├── FocusModeOverlay.tsx    # SVG mask screen-dimming overlay
 │   │   ├── TextSizeOverlay.tsx     # Typography scaling modal (12px-72px)
 │   │   ├── CaptionTransparencyOverlay.tsx # Opacity adjustment modal
+│   │   ├── CaptionLanguageOverlay.tsx     # Target language selector
 │   │   ├── ReadingSpeedOverlay.tsx # TTS rate controller (0.5x-2.0x)
 │   │   ├── TranscriptHistoryOverlay.tsx   # Sidebar log & .txt exporter
 │   │   ├── AuditoryWelcomeOverlay.tsx     # Auditory onboarding screen
-│   │   └── VisualWelcomeOverlay.tsx       # Visual onboarding screen
+│   │   ├── VisualWelcomeOverlay.tsx       # Visual onboarding screen
+│   │   ├── AuditorySettingsModal.tsx      # Config panel for Auditory Mode
+│   │   ├── VisualSettingsModal.tsx        # Config panel for Visual Mode
+│   │   ├── ModeSelection.tsx              # Initial role-selection screen
+│   │   ├── ColorPickerPopup.tsx           # Custom visual mode color tool
+│   │   ├── Dashboard.tsx                  # Mode orchestration wrapper
+│   │   └── Tooltip.tsx                    # Shared UI tooltips
+│   ├── contents/                   # Iframe bridging scripts
+│   │   ├── iframeAudioRelay.ts     # PostMessage bridge for iframe audio
+│   │   └── iframeCaptionOverlay.tsx# Passthrough UI for full-screen iframes
 │   ├── hooks/                      # Custom React Hooks
 │   │   ├── useLiveCaptions.ts      # Audio capture & WebSocket STT hook
 │   │   ├── useSpeech.ts            # Web Speech Synthesis TTS hook
@@ -132,15 +152,13 @@ sensa-chrome-extension/
 │   ├── lib/                        # Core Engineering Modules
 │   │   ├── api.ts                  # WebSocket bridge & PCM audio streamer
 │   │   ├── storage.ts              # Chrome Local Storage schema & tokens
+│   │   ├── audioInterceptorMain.ts # Canvas/Game frequency interceptor
 │   │   ├── modeSelectionVoiceBridge.ts    # Onboarding speech listener
 │   │   ├── visualModeVoiceBridge.ts       # Visual mode voice command bridge
 │   │   └── welcomeVoiceBridge.ts          # Welcome screen voice bridge
-│   ├── tabs/                       # Full-Page Extension Tabs
-│   │   ├── Dashboard.tsx           # Main control center & status page
-│   │   ├── AuditoryMode.tsx        # Auditory dashboard workspace
-│   │   └── VisualMode.tsx          # Visual dashboard workspace
-│   ├── popup.tsx                   # Extension toolbar icon popup
-│   └── index.css                   # Tailwind CSS design system & tokens
+│   ├── tabs/                       # Plasmo background tabs/offscreen
+│   │   └── audioproxy.tsx          # Offscreen Document (STT PCM Processing)
+│   └── popup.tsx                   # Extension toolbar icon popup
 ├── package.json                    # Extension dependencies & scripts
 ├── tailwind.config.js              # Theme customization & animation rules
 └── tsconfig.json                   # Strict TypeScript configuration
