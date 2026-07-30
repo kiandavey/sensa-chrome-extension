@@ -892,7 +892,8 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
         if (!newSpeech) return
 
-        console.log(`[Sensa Settings Voice Bridge] Heard transcript: "${newSpeech}" (Raw: "${liveText}")`)
+        const ts = new Date().toISOString().substring(11, 23)
+        console.log(`[${ts}] [Sensa Settings Voice Bridge] Heard transcript: "${newSpeech}" (Raw: "${liveText}")`)
 
         if (Date.now() < ignoreSpeechUntil) {
           consumedString = liveText
@@ -905,7 +906,8 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         if (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening")) {
           ignoreSpeechUntil = Date.now() + 800
           consumedString = liveText
-          console.log(`[Sensa Settings Voice Bridge] Score results -> Executing command: "deactivate-voice"`)
+          const ts = new Date().toISOString().substring(11, 23)
+          console.log(`[${ts}] [Sensa Settings Voice Bridge] Score results -> Executing command: "deactivate-voice"`)
           playClickAudio("Voice commands deactivated")
           onToggleVoiceCommand?.()
           return
@@ -1001,9 +1003,11 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
         if (commandFired) {
           consumedString = liveText
-          console.log(`[Sensa Settings Voice Bridge] Score results -> Executing command: "${matchedCmdName}"`)
+          const ts = new Date().toISOString().substring(11, 23)
+          console.log(`[${ts}] [Sensa Settings Voice Bridge] Score results -> Executing command: "${matchedCmdName}"`)
         } else {
-          console.log(`[Sensa Settings Voice Bridge] Score results -> No command matched for transcript: "${newSpeech}"`)
+          const ts = new Date().toISOString().substring(11, 23)
+          console.log(`[${ts}] [Sensa Settings Voice Bridge] Score results -> No command matched for transcript: "${newSpeech}"`)
         }
       }
 

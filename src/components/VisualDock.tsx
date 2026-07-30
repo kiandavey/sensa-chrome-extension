@@ -1258,20 +1258,35 @@ export default function VisualDock({
         }
 
         const runMatching = (text: string) => {
-          let cleanText = normalizeInput(text)
+          let rawCleanText = normalizeInput(text)
 
           // Block feedback loops from the system's own speech for the "help/commands" trigger words
           const systemRecentlySpoke = Date.now() - lastUISpeechTimeRef.current < lastUISpeechDurationRef.current
           if (systemRecentlySpoke) {
-            cleanText = cleanText.replace(/\b(help|commands)\b/gi, " ")
+            rawCleanText = rawCleanText.replace(/\b(help|commands)\b/gi, " ")
           }
 
-          if (!cleanText) return false
+          let cleanText = rawCleanText
 
-          console.log(`[Sensa Dock Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
+          // Keyword Consumption: Strip out keywords that have already been executed
+          if (consumedKeywords.length > 0) {
+            consumedKeywords = consumedKeywords.filter(kw => Date.now() < kw.expires)
+            consumedKeywords.forEach(kw => {
+              const escapedKw = kw.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              cleanText = cleanText.replace(new RegExp(`\\b${escapedKw}\\b`, 'gi'), " ")
+            })
+            cleanText = cleanText.replace(/\s+/g, " ").trim()
+          }
+
+          if (!cleanText || Date.now() < ignoreSpeechUntil) return false
+
+          const ts = new Date().toISOString().substring(11, 23)
+          console.log(`[${ts}] [Sensa Dock Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
 
           const paddedSpeech = ` ${cleanText} `
+          const rawPaddedSpeech = ` ${rawCleanText} `
           const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
+          const rawCheck = (...words: string[]) => words.some(w => rawPaddedSpeech.includes(` ${w} `))
           const fuzzyCheck = (target: string, maxDistance = 1) => fuzzyMatch(cleanText, target, maxDistance)
 
           const canToggleVoiceMode = Date.now() >= voiceToggleLockUntil
@@ -1283,20 +1298,18 @@ export default function VisualDock({
           let shouldProcessCommands = callbacksRef.current.isVoiceCommandActive
 
           let matchedAnyCommand = false
+          let currentMatchedKeyword: string | null = null
 
           const applyCommand = (commandName: string, action: () => void) => {
             matchedAnyCommand = true
 
-            // Block re-executing the exact same command on the exact same SpeechRecognition result index (phrase)
-            if (currentResultIndex === lastCommandResultIndex && commandName === lastCommandName) {
-              console.log(`[Sensa Dock Voice Bridge] Score results -> Ignored re-execution of "${commandName}" for phrase index ${currentResultIndex}`)
-              return
-            }
+            // Apply a global 600ms buffer flush lock so trailing audio doesn't trigger false positives
+            ignoreSpeechUntil = Date.now() + 600
 
             // Only apply micro-cooldown if repeating the EXACT same command within 250ms.
-            // Allow 0ms instant execution when switching to a DIFFERENT command (read -> stop -> read).
             if (commandName === lastCommandName && timeSinceLastCommand < 250) {
-              console.log(`[Sensa Dock Voice Bridge] Score results -> Ignored duplicate command: "${commandName}" (within 250ms cooldown)`)
+              const ts = new Date().toISOString().substring(11, 23)
+              console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Ignored duplicate command: "${commandName}" (within 250ms cooldown)`)
               return
             }
             if (commandTimeout) {
@@ -1308,8 +1321,20 @@ export default function VisualDock({
               lastCommandTime = Date.now()
               lastCommandResultIndex = currentResultIndex
               lastCommandTranscript = rawTranscript
+
+              // Strip executed keywords from the interim transcript for 5 seconds to prevent Chrome from re-triggering them
+              const expires = Date.now() + 5000
+              if (currentMatchedKeyword) {
+                consumedKeywords.push({ word: currentMatchedKeyword, expires })
+                currentMatchedKeyword = null // reset for next execution
+              } else {
+                getKeywordsForCommand(commandName).forEach(kw => {
+                  consumedKeywords.push({ word: kw, expires })
+                })
+              }
             }
-            console.log(`[Sensa Dock Voice Bridge] Score results -> Executing command: "${commandName}"`)
+            const ts = new Date().toISOString().substring(11, 23)
+            console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Executing command: "${commandName}"`)
             action()
           }
 
@@ -1336,7 +1361,7 @@ export default function VisualDock({
           }
 
           if (shouldProcessCommands) {
-            if (callbacksRef.current.isVoiceCommandActive && canToggleVoiceMode && (check("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening"))) {
+            if (callbacksRef.current.isVoiceCommandActive && canToggleVoiceMode && (rawCheck("stop listening", "deactivate voice", "deactivate voice command", "deactivate listening"))) {
               applyCommand("deactivate-voice", () => {
                 lockVoiceToggle()
                 callbacksRef.current.playClickAudio?.('Voice commands deactivated')
@@ -1372,32 +1397,42 @@ export default function VisualDock({
               return true
             }
             // Rule 1 & 2 & 3: EAGER INTERIM EXECUTION + HOMOPHONE DICTIONARY MAPPING + EARLY REGEX BOUNDARIES
-            else if (/\b(restart|repeat|re start|re-start|replay|rewind)\b/i.test(cleanText)) {
+            const restartMatch = cleanText.match(/\b(restart|repeat|re start|re-start|replay|rewind|refuse|i start|or start|first start|let s start|her start)\b/i)
+            const nextMatch = cleanText.match(/\b(next|necks|net|nex|nix|next page|next sentence)\b/i)
+            const prevMatch = cleanText.match(/\b(previous|preview|previews|previs|prev|previ|preevi|preveous|previus|privious|previous page|previous sentence|maybe|baby|peace|week)\b/i)
+            const stopMatch = cleanText.match(/\b(stop|pause|stop reading|stop playing|paused|pause reading|stahp)\b/i)
+            const readMatch = cleanText.match(/\b(read|red|reed|rid|ready|reading|play|resume|continue|start reading)\b/i)
+
+            if (restartMatch) {
+              currentMatchedKeyword = restartMatch[0].toLowerCase()
               applyCommand("restart", () => {
                 callbacksRef.current.playClickAudio?.('Repeat')
                 callbacksRef.current.onRestart()
               })
               return true
             }
-            else if (/\b(next|necks|net|nex|nix|next page|next sentence)\b/i.test(cleanText)) {
+            else if (nextMatch) {
+              currentMatchedKeyword = nextMatch[0].toLowerCase()
               applyCommand("next", () => {
                 callbacksRef.current.onNext()
               })
               return true
             }
-            else if (/\b(previous|previews|previs|prev|previ|preevi|preveous|previus|privious|previous page|previous sentence)\b/i.test(cleanText)) {
+            else if (prevMatch) {
+              currentMatchedKeyword = prevMatch[0].toLowerCase()
               applyCommand("previous", () => {
                 callbacksRef.current.onPrev()
               })
               return true
             }
-            else if (((callbacksRef.current.isPlaying && !callbacksRef.current.isPaused) || callbacksRef.current.isPlayOptimistic || /\b(stop reading|stop playing|pause reading|stop it)\b/i.test(cleanText)) && /\b(stop|pause|stop reading|stop playing|paused|pause reading|stahp)\b/i.test(cleanText)) {
+            else if (((callbacksRef.current.isPlaying && !callbacksRef.current.isPaused) || callbacksRef.current.isPlayOptimistic || stopMatch) && stopMatch) {
+              currentMatchedKeyword = stopMatch[0].toLowerCase()
               applyCommand("stop", () => {
                 callbacksRef.current.handleStopReading()
               })
               return true
             }
-            else if (((!callbacksRef.current.isPlaying || callbacksRef.current.isPaused) || !callbacksRef.current.isPlayOptimistic || /\b(start reading|read page|read text|read out|start play)\b/i.test(cleanText)) && /\b(read|red|reed|rid|ready|reading|play|resume|continue|start reading)\b/i.test(cleanText)) {
+            else if (((!callbacksRef.current.isPlaying || callbacksRef.current.isPaused) || !callbacksRef.current.isPlayOptimistic || readMatch) && readMatch) {
               if (check("speed", "reading speed", "breathing speed", "eating speed", "reeding speed", "reed speed")) {
                 return false
               }
@@ -1406,6 +1441,7 @@ export default function VisualDock({
                 commandTimeout = null
               }
 
+              currentMatchedKeyword = readMatch[0].toLowerCase()
               const isSingleWordRead = cleanText === "read" || cleanText === "reading" || cleanText === "reed" || cleanText === "breathing"
 
               if (isSingleWordRead) {
@@ -1446,7 +1482,8 @@ export default function VisualDock({
           }
 
           if (!matchedAnyCommand) {
-            console.log(`[Sensa Dock Voice Bridge] Score results -> No command matched for transcript: "${cleanText}" (isVoiceActive: ${callbacksRef.current.isVoiceCommandActive})`)
+            const ts = new Date().toISOString().substring(11, 23)
+            console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> No command matched for transcript: "${cleanText}" (isVoiceActive: ${callbacksRef.current.isVoiceCommandActive})`)
           }
 
           return false
@@ -1491,6 +1528,12 @@ export default function VisualDock({
       }
     }
 
+    const flushSpeechBuffer = () => {
+      try {
+        recognition?.stop()
+      } catch (e) { }
+    }
+
     const scheduleRestart = (delay = 50, hard = true) => {
       if (!isComponentMounted || isPermanentlyDead) return
       if (!isExtensionContextValid()) {
@@ -1505,9 +1548,17 @@ export default function VisualDock({
           buildAndStart()
         } else {
           try {
+            currentResultIndex = 0
+            lastCommandResultIndex = -1
+            lastCommandTranscript = ""
+            consumedKeywords = []
+            lastCommandName = ""
+            lastCommandTime = 0
             recognition?.start()
           } catch (e: any) {
-            buildAndStart()
+            // Do not immediately buildAndStart which causes OS mic hangs.
+            // Wait a moment and then try a hard restart if needed.
+            window.setTimeout(buildAndStart, 300)
           }
         }
       }, delay)

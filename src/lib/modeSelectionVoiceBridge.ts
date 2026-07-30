@@ -54,7 +54,8 @@ export function isModeSelectionVoiceActive(): boolean {
  * @param level Severity level (`log`, `warn`, `error`).
  */
 const tabLog = (message: string, level: "log" | "warn" | "error" = "log") => {
-  console[level](message)
+  const tsMessage = `[${new Date().toISOString().substring(11, 23)}] ${message}`
+  console[level](tsMessage)
   try {
     chrome.runtime.sendMessage({
       type: "sensa-tab-log",
