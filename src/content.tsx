@@ -594,7 +594,7 @@ export default function FloatingDockManager() {
             startVisualModeVoiceListener()
           }
           if (!nextAuditory) {
-            // speakOverlayFeedback("Visual mode deactivated")
+            speakOverlayFeedback("Visual mode deactivated")
           }
         }
       }

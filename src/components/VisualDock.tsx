@@ -1233,7 +1233,9 @@ export default function VisualDock({
 
         if (event.resultIndex !== currentResultIndex) {
           currentResultIndex = event.resultIndex
-          consumedKeywords = []
+          // Do NOT clear consumedKeywords here — Chrome echoes previously-spoken words
+          // into new phrases, so consumed keywords must persist across phrase boundaries
+          // and expire naturally via their 5-second timestamp.
           lastCommandName = ""
           lastCommandTime = 0
           lastCommandTranscript = ""
@@ -1427,6 +1429,23 @@ export default function VisualDock({
             }
             else if (((callbacksRef.current.isPlaying && !callbacksRef.current.isPaused) || callbacksRef.current.isPlayOptimistic || stopMatch) && stopMatch) {
               currentMatchedKeyword = stopMatch[0].toLowerCase()
+
+              // If it's just "stop" alone, delay briefly to allow "stop listening" to arrive
+              const isSingleWordStop = cleanText === "stop" || cleanText === "pause" || cleanText === "stahp"
+              if (isSingleWordStop && callbacksRef.current.isVoiceCommandActive) {
+                if (commandTimeout) {
+                  window.clearTimeout(commandTimeout)
+                  commandTimeout = null
+                }
+                commandTimeout = window.setTimeout(() => {
+                  commandTimeout = null
+                  applyCommand("stop", () => {
+                    callbacksRef.current.handleStopReading()
+                  })
+                }, 400)
+                return true
+              }
+
               applyCommand("stop", () => {
                 callbacksRef.current.handleStopReading()
               })
@@ -1459,14 +1478,20 @@ export default function VisualDock({
               })
               return true
             }
-            else if (!callbacksRef.current.isMinimized && (check("minimize", "mini") || fuzzyCheck("minimize", 1))) {
+            // Rule 4: MINIMIZE / EXPAND with regex-based dynamic keyword extraction
+            const minimizeMatch = cleanText.match(/\b(minimize|mini|collapse|hide|minimise)\b/i)
+            const expandMatch = cleanText.match(/\b(expand|maximize|maximise|show|open|expend|span)\b/i)
+
+            if (!callbacksRef.current.isMinimized && minimizeMatch) {
+              currentMatchedKeyword = minimizeMatch[0].toLowerCase()
               applyCommand("minimize", () => {
                 callbacksRef.current.playClickAudio?.('Minimize')
                 callbacksRef.current.onMinimizeToggle()
               })
               return true
             }
-            else if (callbacksRef.current.isMinimized && (check("expand", "maximise", "maximize") || fuzzyCheck("expand", 1))) {
+            else if (callbacksRef.current.isMinimized && expandMatch) {
+              currentMatchedKeyword = expandMatch[0].toLowerCase()
               applyCommand("expand", () => {
                 callbacksRef.current.playClickAudio?.('Expand')
                 callbacksRef.current.onMinimizeToggle()
@@ -1475,6 +1500,7 @@ export default function VisualDock({
             }
             else if (check("close", "exit", "quit", "deactivate")) {
               applyCommand("close", () => {
+                callbacksRef.current.playClickAudio?.('Visual mode deactivated')
                 callbacksRef.current.onClose()
               })
               return true
@@ -1853,7 +1879,7 @@ export default function VisualDock({
           type="button"
           onClick={() => {
             playClickSfx()
-            // playClickAudio('Visual mode deactivated')
+            playClickAudio('Visual mode deactivated')
             onClose()
           }}
           className={closeBtnClass}
