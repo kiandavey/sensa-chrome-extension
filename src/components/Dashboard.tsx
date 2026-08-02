@@ -20,6 +20,7 @@ import sensaLogo from "data-base64:../../assets/sensa-logo.png"
 import VisualMode from "./VisualMode"
 import AuditoryMode from "./AuditoryMode"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
+import { isBraveBrowser } from "../lib/browserUtils"
 // Small helper component: measured marquee label
 function WebsiteLabel({ label, isDark, syncColors, websiteStatus }: { label: string; isDark: boolean; syncColors: string; websiteStatus: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -126,6 +127,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
   const [websiteLabel, setWebsiteLabel] = useState("Detecting...")
   const [websiteStatus, setWebsiteStatus] = useState<"online" | "offline" | "unsupported">("offline")
   const [extensionStatus, setExtensionStatus] = useState<"online" | "offline">("offline")
+  const [isBrave, setIsBrave] = useState(false)
   const [unavailableApis, setUnavailableApis] = useState<string[]>([])
   const [isVisualActive, setIsVisualActive] = useState(false)
 
@@ -135,6 +137,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
   const announceTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
+    isBraveBrowser().then(setIsBrave)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setIsMounted(true))
     })
@@ -162,7 +165,7 @@ export default function Dashboard({ selectedMode, theme, onModeChange, onThemeCh
       ? "You can say, deactivate, to disable visual mode."
       : "You can say, activate, to enable visual mode."
 
-    return `${baseMessage} ${commandHint}`
+    return isBrave ? baseMessage : `${baseMessage} ${commandHint}`
   }
 
   useEffect(() => {

@@ -127,28 +127,37 @@ export function useUIHoverAudio() {
 			const voices = window.speechSynthesis.getVoices()
 			if (voices.length === 0) return false
 
-			const hasPreferredOrGoogle =
-				(selectedVoiceURIRef.current && voices.some((v) => v.voiceURI === selectedVoiceURIRef.current && !v.name.includes("David"))) ||
-				(selectedVoiceNameRef.current && voices.some((v) => (v.name === selectedVoiceNameRef.current || v.name?.includes(selectedVoiceNameRef.current)) && !v.name.includes("David"))) ||
-				voices.some((v) => v.name.includes("Google US English")) ||
-				voices.some((v) => v.name.includes("Google"))
+			// 1. Explicitly chosen voice takes absolute priority.
+			if (selectedVoiceURIRef.current) {
+				const explicitVoice = voices.find(v => v.voiceURI === selectedVoiceURIRef.current)
+				if (explicitVoice) {
+					speakNow(explicitVoice)
+					return true
+				}
+			} else if (selectedVoiceNameRef.current) {
+				const explicitVoice = voices.find(v => v.name === selectedVoiceNameRef.current)
+				if (explicitVoice) {
+					speakNow(explicitVoice)
+					return true
+				}
+			}
 
-			// If we're on Brave, we won't get Google voices. Accept any English voice immediately to avoid the 10-second timeout.
-			const hasAcceptableBraveVoice = isBraveRef.current && voices.some((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David"))
-
-			if (hasPreferredOrGoogle || hasAcceptableBraveVoice) {
-				const preferredVoice =
-					voices.find((voice) => !voice.name.includes("David") && voice.voiceURI === selectedVoiceURIRef.current) ||
-					voices.find((voice) => !voice.name.includes("David") && voice.name === selectedVoiceNameRef.current) ||
-					voices.find((voice) => !voice.name.includes("David") && selectedVoiceNameRef.current && voice.name.includes(selectedVoiceNameRef.current)) ||
-					voices.find((voice) => voice.name.includes("Google US English")) ||
-					voices.find((voice) => voice.name.includes("Google")) ||
-					voices.find((voice) => (voice.lang === "en-US" || voice.lang.startsWith("en")) && !voice.name.includes("David")) ||
-					voices[0]
-				
-				speakNow(preferredVoice)
+			// 2. Default to Google US English if no explicit choice was made and it's available.
+			const defaultGoogle = voices.find(v => v.name.includes("Google US English") || v.name.includes("Google"))
+			if (defaultGoogle) {
+				speakNow(defaultGoogle)
 				return true
 			}
+
+			// 3. Fallback for Brave (or environments without Google voices). Accept any local English voice.
+			if (isBraveRef.current) {
+				const fallbackBrave = voices.find(v => v.lang.startsWith("en")) || voices[0]
+				if (fallbackBrave) {
+					speakNow(fallbackBrave)
+					return true
+				}
+			}
+
 			return false
 		}
 

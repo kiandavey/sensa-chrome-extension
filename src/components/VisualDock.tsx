@@ -928,10 +928,12 @@ export default function VisualDock({
 
         chrome.storage.local.set({ sensa_last_voice_reminder_time: now })
 
-        if (cbsAsync.isVoiceCommandActive) {
-          cbsAsync.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
-        } else {
-          cbsAsync.playClickAudio(`You can say ${wakeWordRef.current} to activate voice commands.`)
+        if (!cbsAsync.isBrave) {
+          if (cbsAsync.isVoiceCommandActive) {
+            cbsAsync.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
+          } else {
+            cbsAsync.playClickAudio(`You can say ${wakeWordRef.current} to activate voice commands.`)
+          }
         }
 
         loopTimer = window.setTimeout(checkReminder, 1000)
@@ -946,10 +948,12 @@ export default function VisualDock({
         const cbs = callbacksRef.current
         if (!(cbs.isPlaying && !cbs.isPaused) && !cbs.isVoiceCommandsSuspended && document.visibilityState === "visible" && Date.now() - lastUISpeechTimeRef.current >= lastUISpeechDurationRef.current && !isSpeechBusy()) {
           chrome.storage.local.set({ sensa_last_voice_reminder_time: Date.now() })
-          if (cbs.isVoiceCommandActive) {
-            cbs.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
-          } else {
-            cbs.playClickAudio(`You can say ${wakeWordRef.current} to activate voice commands.`)
+          if (!cbs.isBrave) {
+            if (cbs.isVoiceCommandActive) {
+              cbs.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
+            } else {
+              cbs.playClickAudio(`You can say ${wakeWordRef.current} to activate voice commands.`)
+            }
           }
         }
         loopTimer = window.setTimeout(checkReminder, 1000)
@@ -1026,7 +1030,11 @@ export default function VisualDock({
 
   const handleToggleVoiceCommand = () => {
     playClickSfx()
-    wrappedPlayClickAudio(isVoiceCommandActive ? `Voice commands deactivated. You can say ${wakeWordRef.current} to activate voice commands.` : "Voice commands activated. You can say 'commands' when you want to know the list of commands for the visual dock.")
+    wrappedPlayClickAudio(
+      isVoiceCommandActive
+        ? `Voice commands deactivated.${isBrave ? "" : ` You can say ${wakeWordRef.current} to activate voice commands.`}`
+        : `Voice commands activated.${isBrave ? "" : " You can say 'commands' when you want to know the list of commands for the visual dock."}`
+    )
     onToggleVoiceCommand()
   }
 
@@ -1038,6 +1046,7 @@ export default function VisualDock({
     isPlayOptimistic,
     isVoiceCommandsSuspended,
     isSoundEffectsEnabled,
+    isBrave,
     onToggleVoiceCommand,
     onTogglePlay,
     onPausePlay,
@@ -1066,6 +1075,7 @@ export default function VisualDock({
       isPlayOptimistic,
       isVoiceCommandsSuspended,
       isSoundEffectsEnabled,
+      isBrave,
       onTogglePlay,
       onPausePlay,
       onPlaySpeech,
@@ -1360,7 +1370,11 @@ export default function VisualDock({
             if (canToggleVoiceMode && wakeMatched) {
               applyCommand("activate-voice", () => {
                 lockVoiceToggle()
+              if (!callbacksRef.current.isBrave) {
                 callbacksRef.current.playClickAudio?.("Voice commands activated. You can say 'commands' when you want to know the list of commands for the visual dock.")
+              } else {
+                callbacksRef.current.playClickAudio?.("Voice commands activated.")
+              }
                 try { callbacksRef.current.onToggleVoiceCommand() } catch { }
               })
               shouldProcessCommands = true

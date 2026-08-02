@@ -565,7 +565,8 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
   React.useEffect(() => {
     const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices()
+      // Filter out Vernon because it essentially just aliases to Microsoft Mark on Windows anyway
+      const availableVoices = window.speechSynthesis.getVoices().filter(v => !v.name.includes("Vernon"))
       if (availableVoices.length > 0) {
         const defaultVoice = availableVoices.find((v) => v.name.includes("Google US English")) || availableVoices.find((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David")) || availableVoices.find((v) => v.lang === "en-US" || v.lang.startsWith("en")) || availableVoices[0]
         defaultVoiceURIRef.current = defaultVoice?.voiceURI || ""
@@ -579,12 +580,10 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
           chrome.storage.local.get(["sensa_visual_voice_uri", "sensa_visual_voice_name"], (stored) => {
             const hasValidStored =
               typeof stored.sensa_visual_voice_uri === "string" &&
-              stored.sensa_visual_voice_uri.length > 0 &&
-              !stored.sensa_visual_voice_uri.includes("David") &&
-              !stored.sensa_visual_voice_name?.includes("David") &&
-              !stored.sensa_visual_voice_uri.includes("Mark") &&
-              !stored.sensa_visual_voice_name?.includes("Mark")
-            if (!hasValidStored && defaultVoice.voiceURI && !defaultVoice.name.includes("David") && !defaultVoice.name.includes("Mark")) {
+              stored.sensa_visual_voice_uri.length > 0;
+            
+            // Only set a default if there is absolutely NO voice currently selected.
+            if (!hasValidStored) {
               chrome.storage.local.set({ sensa_visual_voice_uri: defaultVoice.voiceURI, sensa_visual_voice_name: defaultVoice.name || "" })
             }
             defaultVoiceAppliedRef.current = true

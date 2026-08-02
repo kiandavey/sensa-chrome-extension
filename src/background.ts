@@ -398,10 +398,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true; // Keeps the message channel open for the async response
   }
+
+  if (message?.type === "CHECK_BRAVE") {
+    if (sender.tab?.id) {
+      chrome.scripting.executeScript({
+        target: { tabId: sender.tab.id },
+        world: "MAIN",
+        func: async () => {
+          if (typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
+            return await (navigator as any).brave.isBrave();
+          }
+          return false;
+        }
+      }).then(res => {
+        const isBrave = res[0]?.result || false;
+        if (isBrave) chrome.storage.local.set({ is_brave: true });
+        sendResponse({ isBrave });
+      }).catch(err => {
+        sendResponse({ isBrave: false });
+      });
+      return true;
+    } else {
+      sendResponse({ isBrave: false });
+    }
+  }
 })
 
 // Auto-inject content script into all open HTTP/HTTPS tabs on extension reload or update
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Detect Brave and save to storage for content scripts
+  try {
+    const isBrave = typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function' 
+      ? await (navigator as any).brave.isBrave() 
+      : false;
+    await chrome.storage.local.set({ is_brave: isBrave });
+  } catch (e) {
+    console.error("Brave detection failed in background", e);
+  }
+
   chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, async (tabs) => {
     const manifest = chrome.runtime.getManifest()
     const jsFiles = manifest?.content_scripts?.[0]?.js || []
@@ -420,4 +454,15 @@ chrome.runtime.onInstalled.addListener(() => {
       }
     }
   })
+})
+
+chrome.runtime.onStartup.addListener(async () => {
+  try {
+    const isBrave = typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function' 
+      ? await (navigator as any).brave.isBrave() 
+      : false;
+    await chrome.storage.local.set({ is_brave: isBrave });
+  } catch (e) {
+    console.error("Brave detection failed in background on startup", e);
+  }
 })

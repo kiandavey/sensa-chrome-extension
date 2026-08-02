@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useRef } from "react"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 interface VisualModeProps {
   isActiveView?: boolean
@@ -30,10 +31,17 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
   const hoverSpeakLockRef = useRef(0)
   const lastClickTimeRef = useRef(0)
   const isActiveViewRef = useRef(isActiveView)
+  const isBraveRef = useRef(false)
 
   useEffect(() => {
     isActiveViewRef.current = isActiveView
   }, [isActiveView])
+
+  useEffect(() => {
+    isBraveBrowser().then((isBrave) => {
+      isBraveRef.current = isBrave
+    })
+  }, [])
 
   const getAudioContext = () => {
     if (!isSoundEffectsEnabledRef.current) return null
@@ -458,7 +466,13 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
     return () => {
       isMounted = false
       if (retryTimer !== null) window.clearTimeout(retryTimer)
-      sendVoiceBridgeMessage("stop")
+      
+      // BROADCAST "stop" to ALL tabs to prevent background ghost listeners
+      chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, (tabs) => {
+        tabs?.forEach(t => {
+          if (t.id) chrome.tabs.sendMessage(t.id, { type: "sensa-visual-mode-voice", action: "stop" }, () => chrome.runtime.lastError)
+        })
+      })
     }
   }, [isActiveView, isListening])
 
@@ -466,7 +480,7 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
     const interval = window.setInterval(() => {
       if (!isActiveViewRef.current) return;
       chrome.storage.local.get(["sensa_visual_active"], (res) => {
-        if (!isActiveViewRef.current) return;
+        if (!isActiveViewRef.current || isBraveRef.current) return;
         void callbacksRef.current.speakFeedback(
           res.sensa_visual_active 
             ? "You can say, deactivate, to disable visual mode." 

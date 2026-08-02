@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import sensaLogo from "data-base64:../../assets/sensa-logo.png"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 const getLevenshteinDistance = (a: string, b: string): number => {
   const tmp: number[][] = [];
@@ -75,6 +76,7 @@ export default function ModeSelection({ theme, onSelectMode }: ModeSelectionProp
   const { playHoverAudio, cancelHoverAudio } = useUIHoverAudio()
   const [typedDescriptionCount, setTypedDescriptionCount] = useState(0)
   const [typedWordCount, setTypedWordCount] = useState(0)
+  const [isBrave, setIsBrave] = useState(false)
   const [startDescription, setStartDescription] = useState(false)
   const [startSubtitle, setStartSubtitle] = useState(false)
   const [visibleCards, setVisibleCards] = useState(0)
@@ -105,7 +107,7 @@ export default function ModeSelection({ theme, onSelectMode }: ModeSelectionProp
 
   const visualCardText = "Visual Mode. Support low vision with voice navigation, screen magnifier, and guided reading."
   const auditoryCardText = "Auditory Mode. Support hearing loss with multilingual captions, audio visualizer, and noise alerts."
-  const commandReminderText = "You can say, Visual Mode, or, Auditory Mode, to choose a primary accessibility mode."
+  const commandReminderText = isBrave ? "" : "You can say, Visual Mode, or, Auditory Mode, to choose a primary accessibility mode."
 
   const getAudioContext = () => {
     if (!audioCtxRef.current) {

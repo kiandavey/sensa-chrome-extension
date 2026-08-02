@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 interface WelcomeProps {
   theme: "light" | "dark"
@@ -24,6 +25,11 @@ export default function VisualWelcomeOverlay({ theme, onGetStarted }: WelcomePro
   const { playHoverAudio, cancelHoverAudio } = useUIHoverAudio()
   const [isSkipping, setIsSkipping] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
+  const [isBrave, setIsBrave] = useState(false)
+
+  useEffect(() => {
+    isBraveBrowser().then(setIsBrave)
+  }, [])
   const [typedWordCount, setTypedWordCount] = useState(0)
   const [startDescription, setStartDescription] = useState(false)
   const [visibleFeatureCount, setVisibleFeatureCount] = useState(0)
@@ -48,7 +54,7 @@ export default function VisualWelcomeOverlay({ theme, onGetStarted }: WelcomePro
   const titleText = "Welcome to Visual Mode"
   const descriptionText = "Assisting visually impaired users with specialized accessibility tools and features."
   const featuresIntroText = "Here are the main features you'll use."
-  const commandReminderText = "When you are ready, you can say, Get Started, to proceed to the Visual Mode interface."
+  const commandReminderText = isBrave ? "" : "When you are ready, you can say, Get Started, to proceed to the Visual Mode interface."
   const descriptionWords = useMemo(() => descriptionText.split(" "), [descriptionText])
   const typedDescription = descriptionWords.slice(0, typedWordCount).join(" ")
 
