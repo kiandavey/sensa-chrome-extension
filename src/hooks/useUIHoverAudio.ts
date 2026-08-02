@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useRef } from "react"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 export function useUIHoverAudio() {
 	const hoverTimeoutRef = useRef<number | null>(null)
@@ -31,8 +32,12 @@ export function useUIHoverAudio() {
 	const tabVisibleAtRef = useRef(performance.now())
 	const isVoiceGuideEnabledRef = useRef(true)
 	const isStorageLoadedRef = useRef(false)
+	const isBraveRef = useRef(false)
 
 	useEffect(() => {
+		isBraveBrowser().then((isBrave) => {
+			isBraveRef.current = isBrave
+		})
 		chrome.storage.local.get(["sensa_visual_voice_uri", "sensa_visual_voice_name", "sensa_visual_voice_guide_enabled"], (res) => {
 			if (typeof res.sensa_visual_voice_uri === "string") {
 				selectedVoiceURIRef.current = res.sensa_visual_voice_uri
@@ -128,13 +133,18 @@ export function useUIHoverAudio() {
 				voices.some((v) => v.name.includes("Google US English")) ||
 				voices.some((v) => v.name.includes("Google"))
 
-			if (hasPreferredOrGoogle) {
+			// If we're on Brave, we won't get Google voices. Accept any English voice immediately to avoid the 10-second timeout.
+			const hasAcceptableBraveVoice = isBraveRef.current && voices.some((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David"))
+
+			if (hasPreferredOrGoogle || hasAcceptableBraveVoice) {
 				const preferredVoice =
 					voices.find((voice) => !voice.name.includes("David") && voice.voiceURI === selectedVoiceURIRef.current) ||
 					voices.find((voice) => !voice.name.includes("David") && voice.name === selectedVoiceNameRef.current) ||
 					voices.find((voice) => !voice.name.includes("David") && selectedVoiceNameRef.current && voice.name.includes(selectedVoiceNameRef.current)) ||
 					voices.find((voice) => voice.name.includes("Google US English")) ||
-					voices.find((voice) => voice.name.includes("Google"))
+					voices.find((voice) => voice.name.includes("Google")) ||
+					voices.find((voice) => (voice.lang === "en-US" || voice.lang.startsWith("en")) && !voice.name.includes("David")) ||
+					voices[0]
 				
 				speakNow(preferredVoice)
 				return true

@@ -11,6 +11,8 @@
  *    - Resolves vocal ambiguities and phonetic collisions between "activate" and "deactivate" using weighted word frequency scoring and N-gram distance checking.
  */
 
+import { isBraveBrowser } from "./browserUtils"
+
 let recognition: SpeechRecognition | null = null
 let isActive = false
 let restartTimer: number | null = null
@@ -479,6 +481,12 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
 }
 
 export async function startVisualModeVoiceListener(): Promise<boolean> {
+  const isBrave = await isBraveBrowser()
+  if (isBrave) {
+    tabLog("[Sensa Tab Voice Bridge] SpeechRecognition is NOT supported in Brave browser.", "warn")
+    return false
+  }
+
   const isVisualActive = await new Promise<boolean>((resolve) => {
     chrome.storage.local.get(["sensa_visual_active"], (res) => {
       resolve(!!res.sensa_visual_active)

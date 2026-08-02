@@ -20,6 +20,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react"
 import ReactDOM from "react-dom"
 import { Tooltip } from "./Tooltip"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 const DEFAULT_WAKE_WORD = "Sensa"
 
@@ -740,6 +741,11 @@ export default function VisualDock({
   const resetSilenceTimerRef = useRef<(() => void) | null>(null)
   const lastUISpeechTimeRef = useRef(0)
   const lastUISpeechDurationRef = useRef(0)
+  const [isBrave, setIsBrave] = useState(false)
+
+  useEffect(() => {
+    isBraveBrowser().then(setIsBrave)
+  }, [])
 
   useEffect(() => {
     setIsPlayOptimistic(isPlaying && !isPaused)
@@ -1664,17 +1670,20 @@ export default function VisualDock({
         <button
           type="button"
           onClick={() => {
-            handleToggleVoiceCommand()
+            if (!isBrave) handleToggleVoiceCommand()
           }}
           aria-pressed={isVoiceCommandActive}
-          className={`${btnBaseClass} text-white transition-all duration-300 ${isVoiceCommandActive
+          disabled={isBrave}
+          className={`${btnBaseClass} text-white transition-all duration-300 ${
+            isBrave ? "bg-gray-400 cursor-not-allowed opacity-50" :
+            isVoiceCommandActive
             ? "shadow-[0_0_0_1px_rgba(10,68,255,0.18),0_0_24px_rgba(10,68,255,0.42)] ring-4 ring-[#0A44FF]/30 bg-[#0A44FF]"
             : "bg-[#0A44FF] shadow-md shadow-[#0A44FF]/30 hover:bg-[#0836CC] hover:shadow-lg hover:shadow-[#0A44FF]/50"
             }`}
-          aria-label={isVoiceCommandActive ? "Stop Listening" : "Start Voice Command"}
-          {...getHoverHandlers(isVoiceCommandActive ? "Stop Listening" : "Speak")}
+          aria-label={isBrave ? "Voice commands are not supported in Brave." : isVoiceCommandActive ? "Stop Listening" : "Start Voice Command"}
+          {...getHoverHandlers(isBrave ? "Voice commands not supported in Brave" : isVoiceCommandActive ? "Stop Listening" : "Speak")}
         >
-          <Tooltip label={isVoiceCommandActive ? "Stop Listening" : "Speak"} isDark={isDark} />
+          <Tooltip label={isBrave ? "Not supported in Brave browser" : isVoiceCommandActive ? "Stop Listening" : "Speak"} isDark={isDark} />
           <div className="relative flex items-center justify-center !w-full !h-full shrink-0" aria-hidden="true">
             <svg
               viewBox="0 0 24 24"

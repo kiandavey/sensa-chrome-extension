@@ -25,6 +25,8 @@ import { DEFAULT_PROFILE, type SensaUserProfile } from "./storage"
 
 type ModeSelectionVoiceMode = "visual" | "auditory"
 
+import { isBraveBrowser } from "./browserUtils"
+
 let recognition: SpeechRecognition | null = null
 let isActive = false
 let restartTimer: number | null = null
@@ -520,6 +522,12 @@ const primeMicrophone = async () => {
  * @returns {Promise<boolean>} True if recognition started successfully.
  */
 export async function startModeSelectionVoiceListener(): Promise<boolean> {
+  const isBrave = await isBraveBrowser()
+  if (isBrave) {
+    tabLog("[Sensa Tab Voice Bridge] SpeechRecognition is NOT supported in Brave browser.", "warn")
+    return false
+  }
+
   if ((isActive && recognition) || isStarting) {
     return true
   }
