@@ -312,6 +312,8 @@ const scrubTTS = (text: string): string | null => {
 const attachRecognitionHandlers = (instance: SpeechRecognition) => {
   instance.onstart = () => {
     recognitionRunning = true
+    window['sensaSpeechRunning'] = true
+    window.dispatchEvent(new CustomEvent('sensa-speech-started'))
     lastAudioTimestamp = Date.now()
     restartAttempts = 0
     tabLog("[Sensa Tab Voice Bridge] Recognition started successfully")
@@ -432,6 +434,8 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
 
   instance.onerror = (event: SpeechRecognitionErrorEvent) => {
     recognitionRunning = false
+    window['sensaSpeechRunning'] = false
+    window.dispatchEvent(new CustomEvent('sensa-speech-ended'))
 
     if (event.error === "aborted" || event.error === "no-speech") {
       return
@@ -439,11 +443,11 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
 
     tabLog(`[Sensa Tab Voice Bridge] SpeechRecognition error in tab: ${event.error}`, "error")
 
-    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      tabLog("[Sensa Tab Voice Bridge] Microphone access denied, stopping tab listener.", "warn")
+    if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "network") {
+      tabLog("[Sensa Tab Voice Bridge] Microphone access denied or network error, stopping tab listener and flagging speech unsupported.", "warn")
       isActive = false
       teardownRecognition()
-      chrome.storage.local.set({ sensa_mode_selection_listening: false })
+      chrome.storage.local.set({ sensa_mode_selection_listening: false, sensa_speech_supported: false })
       return
     }
 
@@ -452,6 +456,8 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
 
   instance.onend = () => {
     recognitionRunning = false
+    window['sensaSpeechRunning'] = false
+    window.dispatchEvent(new CustomEvent('sensa-speech-ended'))
     tabLog("[Sensa Tab Voice Bridge] Recognition ended.")
     scheduleRestart()
   }
@@ -502,6 +508,13 @@ const applyModeSelection = (mode: ModeSelectionVoiceMode) => {
  * Prime microphone permissions via `getUserMedia` without blocking `SpeechRecognition` startup.
  */
 const primeMicrophone = async () => {
+  const isSpeechSupported = await new Promise<boolean>((resolve) => {
+    chrome.storage.local.get(["sensa_speech_supported"], (res) => {
+      resolve(res.sensa_speech_supported !== false)
+    })
+  })
+  if (!isSpeechSupported) return
+
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
     throw new Error("navigator.mediaDevices.getUserMedia is not available")
   }

@@ -19,6 +19,7 @@ import React, { useState, useEffect, useRef } from "react"
 import ColorPickerPopup from "./ColorPickerPopup"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
 import { startVisualModeVoiceListener, stopVisualModeVoiceListener } from "../lib/visualModeVoiceBridge"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 const getLevenshteinDistance = (a: string, b: string): number => {
   const tmp: number[][] = []
@@ -135,6 +136,11 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
   const [isSoundEffectsEnabled, setIsSoundEffectsEnabled] = useState<boolean>(true)
   const isSoundEffectsEnabledRef = useRef<boolean>(true)
   const [isStorageLoaded, setIsStorageLoaded] = useState(false)
+  const [isBrave, setIsBrave] = useState(false)
+
+  useEffect(() => {
+    isBraveBrowser().then(setIsBrave)
+  }, [])
 
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [highlightColor, setHighlightColor] = useState(DEFAULT_HIGHLIGHT_COLOR)
@@ -606,6 +612,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
 
   useEffect(() => {
     if (!isTabVisible) return
+    if (isBrave) return // Skip SpeechRecognition entirely in Brave — it triggers mic permission prompts
 
     const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionCtor) return
@@ -1078,7 +1085,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         try { recognition.stop() } catch (e) { }
       }
     }
-  }, [playClickAudio, isTabVisible])
+  }, [playClickAudio, isTabVisible, isBrave])
 
   const handleHighlightChange = (color: string) => {
     const normalizedNew = color.toUpperCase()

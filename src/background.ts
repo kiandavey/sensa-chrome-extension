@@ -400,6 +400,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "CHECK_BRAVE") {
+    const fallbackToStorage = () => {
+      chrome.storage.local.get(["is_brave"], (res) => {
+        sendResponse({ isBrave: !!res?.is_brave });
+      });
+    };
+
     if (sender.tab?.id) {
       chrome.scripting.executeScript({
         target: { tabId: sender.tab.id },
@@ -412,14 +418,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       }).then(res => {
         const isBrave = res[0]?.result || false;
-        if (isBrave) chrome.storage.local.set({ is_brave: true });
-        sendResponse({ isBrave });
+        if (isBrave) {
+          chrome.storage.local.set({ is_brave: true });
+          sendResponse({ isBrave: true });
+        } else {
+          fallbackToStorage();
+        }
       }).catch(err => {
-        sendResponse({ isBrave: false });
+        fallbackToStorage();
       });
       return true;
     } else {
-      sendResponse({ isBrave: false });
+      fallbackToStorage();
+      return true;
     }
   }
 })

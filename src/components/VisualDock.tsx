@@ -94,7 +94,7 @@ const normalizeInput = (rawText: string): string => {
 /**
  * Animated microphone visualizer icon responsive to live user speech energy.
  */
-const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSoundDetected?: () => void }) => {
+const GodTierMicIcon = ({ isActive, onSoundDetected, isBrave = false }: { isActive: boolean, onSoundDetected?: () => void, isBrave?: boolean }) => {
   const barsRef = useRef<(HTMLDivElement | null)[]>([])
   const currentHeights = useRef([4, 6, 8, 6, 4])
   const tickRef = useRef(0)
@@ -145,7 +145,13 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
     }
 
     const startMic = async () => {
-      if (isMicRunning) return
+      if (isMicRunning || isBrave) return
+      const isSpeechSupported = await new Promise<boolean>((resolve) => {
+        chrome.storage.local.get(["sensa_speech_supported"], (res) => {
+          resolve(res.sensa_speech_supported !== false)
+        })
+      })
+      if (!isSpeechSupported) return
       try {
         isMicRunning = true
         stream = await navigator.mediaDevices.getUserMedia({
@@ -247,25 +253,37 @@ const GodTierMicIcon = ({ isActive, onSoundDetected }: { isActive: boolean, onSo
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        if (isActive) startMic()
+        if (isActive && window['sensaSpeechRunning']) startMic()
       } else {
         stopMic()
       }
     }
 
+    const handleSpeechStart = () => {
+      if (isActive && document.visibilityState === "visible") startMic()
+    }
+
+    const handleSpeechEnd = () => {
+      stopMic()
+    }
+
     document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("sensa-speech-started", handleSpeechStart)
+    window.addEventListener("sensa-speech-ended", handleSpeechEnd)
 
     animationId = requestAnimationFrame(draw)
-    if (isActive && document.visibilityState === "visible") {
+    if (isActive && document.visibilityState === "visible" && window['sensaSpeechRunning']) {
       startMic()
     }
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("sensa-speech-started", handleSpeechStart)
+      window.removeEventListener("sensa-speech-ended", handleSpeechEnd)
       cancelAnimationFrame(animationId)
       stopMic()
     }
-  }, [isActive])
+  }, [isActive, isBrave])
 
   return (
     <div className="flex items-center justify-center gap-[3px] !w-[24px] !h-[24px] shrink-0" aria-hidden="true">
@@ -741,7 +759,7 @@ export default function VisualDock({
   const resetSilenceTimerRef = useRef<(() => void) | null>(null)
   const lastUISpeechTimeRef = useRef(0)
   const lastUISpeechDurationRef = useRef(0)
-  const [isBrave, setIsBrave] = useState(false)
+  const [isBrave, setIsBrave] = useState<boolean | null>(null)
 
   useEffect(() => {
     isBraveBrowser().then(setIsBrave)
@@ -1674,7 +1692,8 @@ export default function VisualDock({
         >
           <Tooltip label="Audio Visualizer" isDark={isDark} />
           <GodTierMicIcon
-            isActive={isVoiceCommandActive}
+            isBrave={isBrave === true}
+            isActive={isVoiceCommandActive && isBrave === false}
             onSoundDetected={() => {
               if (resetSilenceTimerRef.current) resetSilenceTimerRef.current()
             }}
@@ -1684,18 +1703,18 @@ export default function VisualDock({
         <button
           type="button"
           onClick={() => {
-            if (!isBrave) handleToggleVoiceCommand()
+            if (isBrave === false) handleToggleVoiceCommand()
           }}
           aria-pressed={isVoiceCommandActive}
-          disabled={isBrave}
+          disabled={isBrave === true}
           className={`${btnBaseClass} text-white transition-all duration-300 ${
-            isBrave ? "bg-gray-400 cursor-not-allowed opacity-50" :
+            isBrave === true ? "bg-gray-400 cursor-not-allowed opacity-50" :
             isVoiceCommandActive
             ? "shadow-[0_0_0_1px_rgba(10,68,255,0.18),0_0_24px_rgba(10,68,255,0.42)] ring-4 ring-[#0A44FF]/30 bg-[#0A44FF]"
             : "bg-[#0A44FF] shadow-md shadow-[#0A44FF]/30 hover:bg-[#0836CC] hover:shadow-lg hover:shadow-[#0A44FF]/50"
             }`}
-          aria-label={isBrave ? "Voice commands are not supported in Brave." : isVoiceCommandActive ? "Stop Listening" : "Start Voice Command"}
-          {...getHoverHandlers(isBrave ? "Voice commands not supported in Brave" : isVoiceCommandActive ? "Stop Listening" : "Speak")}
+          aria-label={isBrave === true ? "Voice commands are not supported in Brave." : isVoiceCommandActive ? "Stop Listening" : "Start Voice Command"}
+          {...getHoverHandlers(isBrave === true ? "Voice commands not supported in Brave" : isVoiceCommandActive ? "Stop Listening" : "Speak")}
         >
           <Tooltip label={isBrave ? "Not supported in Brave browser" : isVoiceCommandActive ? "Stop Listening" : "Speak"} isDark={isDark} />
           <div className="relative flex items-center justify-center !w-full !h-full shrink-0" aria-hidden="true">

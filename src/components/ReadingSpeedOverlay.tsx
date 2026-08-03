@@ -13,6 +13,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react"
 import { useUIHoverAudio } from "../hooks/useUIHoverAudio"
+import { isBraveBrowser } from "../lib/browserUtils"
 
 const getLevenshteinDistance = (a: string, b: string): number => {
   const tmp: number[][] = []
@@ -67,6 +68,11 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
   const { playHoverAudio, playClickAudio, cancelHoverAudio } = useUIHoverAudio()
   const onCloseRef = useRef(onClose)
   const onSpeedChangeRef = useRef(onSpeedChange)
+  const [isBrave, setIsBrave] = useState(false)
+
+  useEffect(() => {
+    isBraveBrowser().then(setIsBrave)
+  }, [])
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const [isSoundEffectsEnabled, setIsSoundEffectsEnabled] = useState(true)
@@ -369,6 +375,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
 
   useEffect(() => {
     if (!isTabVisible) return
+    if (isBrave) return // Skip SpeechRecognition entirely in Brave
 
     const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionCtor) return
@@ -623,7 +630,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
         try { recognition.stop() } catch (e) {}
       }
     }
-  }, [playClickAudio, isTabVisible])
+  }, [playClickAudio, isTabVisible, isBrave])
 
   const modalBg = isDark ? "bg-[#141416]/96 backdrop-blur-3xl border-white/10" : "bg-white/95 backdrop-blur-3xl border-white/40"
   const textColor = isDark ? "text-gray-100" : "text-gray-900"

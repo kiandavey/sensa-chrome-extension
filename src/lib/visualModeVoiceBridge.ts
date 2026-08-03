@@ -285,6 +285,13 @@ const teardownRecognition = () => {
 }
 
 const primeMicrophone = async () => {
+  const isSpeechSupported = await new Promise<boolean>((resolve) => {
+    chrome.storage.local.get(["sensa_speech_supported"], (res) => {
+      resolve(res.sensa_speech_supported !== false)
+    })
+  })
+  if (!isSpeechSupported) return
+
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
     throw new Error("navigator.mediaDevices.getUserMedia is not available")
   }
@@ -457,25 +464,32 @@ const attachRecognitionHandlers = (instance: SpeechRecognition) => {
   }
 
   instance.onstart = () => {
+    window['sensaSpeechRunning'] = true
+    window.dispatchEvent(new CustomEvent('sensa-speech-started'))
     visualRestartAttempts = 0
   }
 
   instance.onerror = (event: SpeechRecognitionErrorEvent) => {
+    window['sensaSpeechRunning'] = false
+    window.dispatchEvent(new CustomEvent('sensa-speech-ended'))
     if (event.error === "aborted" || event.error === "no-speech") {
       return
     }
     tabLog(`[Sensa Tab Voice Bridge] Visual mode SpeechRecognition error in tab: ${event.error}`, "error")
-    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      tabLog("[Sensa Tab Voice Bridge] Visual mode microphone access denied, stopping tab listener.", "warn")
+    if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "network") {
+      tabLog("[Sensa Tab Voice Bridge] Visual mode microphone access denied or network error, stopping tab listener and flagging speech unsupported.", "warn")
       isActive = false
       teardownRecognition()
       chrome.storage.onChanged.removeListener(handleStorageChange)
+      chrome.storage.local.set({ sensa_speech_supported: false })
       return
     }
     scheduleRestart(true)
   }
 
   instance.onend = () => {
+    window['sensaSpeechRunning'] = false
+    window.dispatchEvent(new CustomEvent('sensa-speech-ended'))
     scheduleRestart(false)
   }
 }

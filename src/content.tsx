@@ -60,6 +60,8 @@ export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"]
 }
 
+export const getShadowHostId = () => "sensa-shadow-host"
+
 export const getStyle = () => {
   const style = document.createElement("style")
   style.textContent = cssText
@@ -346,7 +348,7 @@ export default function FloatingDockManager() {
         dummy.volume = 0;
         dummy.rate = 10;
         window.speechSynthesis.speak(dummy);
-      } catch (e) {}
+      } catch (e) { }
 
       intervalId = window.setInterval(() => {
         if (checkAndSpeak()) return
@@ -432,6 +434,7 @@ export default function FloatingDockManager() {
   }
 
   const deactivateDock = () => {
+    setActiveMode(null) // Immediately clear React state so the dock disappears
     chrome.storage.local.set({
       sensa_visual_active: false,
       sensa_auditory_active: false,
@@ -1011,87 +1014,89 @@ export default function FloatingDockManager() {
         )}
 
         {/* 2. THE DRAGGABLE DOCK */}
-        <div
-          ref={dragRef}
-          onMouseDown={handleMouseDown}
-          style={{
-            transform: `translate(calc(0px + ${position.x}px), calc(-50% + ${position.y}px))`,
-            cursor: isDragging ? 'grabbing' : 'grab'
-          }}
-          className="fixed right-4 top-1/2 z-[99999] font-sans"
-        >
-          {isVisualActive && (
-            <VisualDock
-              isDark={isDark}
-              isMinimized={isMinimized}
-              readingSpeed={readingSpeed}
-              isPlaying={isPlaying}            // <-- NEW PROP
-              isPaused={isPaused}              // <-- NEW PROP
-              isVoiceCommandActive={isVoiceCommandActive}
-              canRestart={isPlaying || isPaused}
-              isVoiceCommandsSuspended={isSettingsOverlayOpen || isReadingSpeedOpen || isModeSelectionVoiceActive}
-              onTogglePlay={togglePlayPause}   // <-- NEW PROP
-              onPausePlay={pauseSpeech}
-              onPlaySpeech={playSpeech}
-              onToggleVoiceCommand={() => {
-                setIsVoiceCommandActive(prev => {
-                  const next = !prev
-                  chrome.storage.local.set({ sensa_voice_command_active: next })
-                  return next
-                })
-              }}
-              onNext={next}                    // <-- NEW PROP
-              onPrev={prev}                    // <-- NEW PROP
-              onRestart={restart}
-              onMinimizeToggle={() => setIsMinimized(!isMinimized)}
-              onOpenReadingSpeed={(viaVoice) => {
-                setIsReadingSpeedOpen(true)
-                if (viaVoice) setIsReadingSpeedOpenViaVoice(true)
-                speakOverlayFeedback("Reading speed overlay opened")
-              }}
-              onOpenSettings={(viaVoice) => {
-                setIsVisualSettingsOpen(true)
-                if (viaVoice) setIsVisualSettingsOpenViaVoice(true)
-              }}
-              onClose={() => {
-                deactivateDock()
-                chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: null })
-              }}
-            />
-          )}
+        {(isVisualActive || isAuditoryActive) && (
+          <div
+            ref={dragRef}
+            onMouseDown={handleMouseDown}
+            style={{
+              transform: `translate(calc(0px + ${position.x}px), calc(-50% + ${position.y}px))`,
+              cursor: isDragging ? 'grabbing' : 'grab'
+            }}
+            className="fixed right-4 top-1/2 z-[99999] font-sans"
+          >
+            {isVisualActive && (
+              <VisualDock
+                isDark={isDark}
+                isMinimized={isMinimized}
+                readingSpeed={readingSpeed}
+                isPlaying={isPlaying}            // <-- NEW PROP
+                isPaused={isPaused}              // <-- NEW PROP
+                isVoiceCommandActive={isVoiceCommandActive}
+                canRestart={isPlaying || isPaused}
+                isVoiceCommandsSuspended={isSettingsOverlayOpen || isReadingSpeedOpen || isModeSelectionVoiceActive}
+                onTogglePlay={togglePlayPause}   // <-- NEW PROP
+                onPausePlay={pauseSpeech}
+                onPlaySpeech={playSpeech}
+                onToggleVoiceCommand={() => {
+                  setIsVoiceCommandActive(prev => {
+                    const next = !prev
+                    chrome.storage.local.set({ sensa_voice_command_active: next })
+                    return next
+                  })
+                }}
+                onNext={next}                    // <-- NEW PROP
+                onPrev={prev}                    // <-- NEW PROP
+                onRestart={restart}
+                onMinimizeToggle={() => setIsMinimized(!isMinimized)}
+                onOpenReadingSpeed={(viaVoice) => {
+                  setIsReadingSpeedOpen(true)
+                  if (viaVoice) setIsReadingSpeedOpenViaVoice(true)
+                  speakOverlayFeedback("Reading speed overlay opened")
+                }}
+                onOpenSettings={(viaVoice) => {
+                  setIsVisualSettingsOpen(true)
+                  if (viaVoice) setIsVisualSettingsOpenViaVoice(true)
+                }}
+                onClose={() => {
+                  deactivateDock()
+                  chrome.runtime.sendMessage({ type: "sensa-activate-mode", mode: null })
+                }}
+              />
+            )}
 
-          {isAuditoryActive && (
-            <AuditoryDock
-              isDark={isDark}
-              isMinimized={isMinimized}
-              isCaptionsActive={isCaptionsActive}
-              onToggleCaptions={() => setIsCaptionsActive((prev) => !prev)}
-              onMinimizeToggle={() => setIsMinimized(!isMinimized)}
-              onOpenCaptionLanguage={() => {
-                // Defer opening so the original click event doesn't immediately hit the modal backdrop
-                setTimeout(() => setIsCaptionLanguageOpen(true), 0)
-              }}
-              onOpenTranscriptHistory={() => setIsTranscriptHistoryOpen(true)}
-              onOpenTextSize={() => setIsTextSizeOpen(true)}
-              onOpenCaptionTransparency={() => setIsCaptionTransparencyOpen(true)}
-              isFocusMode={isFocusMode}
-              onToggleFocusMode={() => {
-                const next = !isFocusMode
-                setIsFocusMode(next)
-                chrome.storage.local.set({ sensa_auditory_focus_mode: next })
-              }}
-              onOpenSettings={() => setIsAuditorySettingsOpen(true)}
-              onClose={() => {
-                deactivateDock()
-                setIsCaptionLanguageOpen(false)
-                setIsTranscriptHistoryOpen(false)
-                setIsTextSizeOpen(false)
-                setIsCaptionTransparencyOpen(false)
-                setIsCaptionsActive(false)
-              }}
-            />
-          )}
-        </div>
+            {isAuditoryActive && (
+              <AuditoryDock
+                isDark={isDark}
+                isMinimized={isMinimized}
+                isCaptionsActive={isCaptionsActive}
+                onToggleCaptions={() => setIsCaptionsActive((prev) => !prev)}
+                onMinimizeToggle={() => setIsMinimized(!isMinimized)}
+                onOpenCaptionLanguage={() => {
+                  // Defer opening so the original click event doesn't immediately hit the modal backdrop
+                  setTimeout(() => setIsCaptionLanguageOpen(true), 0)
+                }}
+                onOpenTranscriptHistory={() => setIsTranscriptHistoryOpen(true)}
+                onOpenTextSize={() => setIsTextSizeOpen(true)}
+                onOpenCaptionTransparency={() => setIsCaptionTransparencyOpen(true)}
+                isFocusMode={isFocusMode}
+                onToggleFocusMode={() => {
+                  const next = !isFocusMode
+                  setIsFocusMode(next)
+                  chrome.storage.local.set({ sensa_auditory_focus_mode: next })
+                }}
+                onOpenSettings={() => setIsAuditorySettingsOpen(true)}
+                onClose={() => {
+                  deactivateDock()
+                  setIsCaptionLanguageOpen(false)
+                  setIsTranscriptHistoryOpen(false)
+                  setIsTextSizeOpen(false)
+                  setIsCaptionTransparencyOpen(false)
+                  setIsCaptionsActive(false)
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
     </>
   )

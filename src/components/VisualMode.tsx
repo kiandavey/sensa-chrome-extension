@@ -32,14 +32,16 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
   const lastClickTimeRef = useRef(0)
   const isActiveViewRef = useRef(isActiveView)
   const isBraveRef = useRef(false)
+  const [isBrave, setIsBrave] = useState(false)
 
   useEffect(() => {
     isActiveViewRef.current = isActiveView
   }, [isActiveView])
 
   useEffect(() => {
-    isBraveBrowser().then((isBrave) => {
-      isBraveRef.current = isBrave
+    isBraveBrowser().then((b) => {
+      isBraveRef.current = b
+      setIsBrave(b)
     })
   }, [])
 
@@ -593,7 +595,7 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
           onBlur={cancelHoverSpeak}
           tabIndex={0}
         >
-          {isListening ? "Click or Speak to Deactivate" : "Click or Speak to Activate"}
+          {isListening ? (isBrave ? "Click to Deactivate" : "Click or Speak to Deactivate") : (isBrave ? "Click to Activate" : "Click or Speak to Activate")}
         </h2>
 
       </div>
