@@ -293,8 +293,12 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
   const activeFocusClass = accent === "orange" ? "focus:ring-[#FF7A2F]/40" : "focus:ring-[#0A44FF]/40"
 
   const actionButtonClass = accent === "orange"
-    ? "bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A] hover:from-[#E66B25] hover:to-[#E68E09] shadow-[0_4px_12px_rgba(255,122,47,0.3)]"
-    : "bg-gradient-to-r from-[#0A44FF] to-[#0099FF] hover:from-[#093CE0] hover:to-[#008AE6] shadow-[0_4px_12px_rgba(10,68,255,0.3)]"
+    ? "shadow-[0_4px_12px_rgba(255,122,47,0.3)] hover:brightness-105"
+    : "shadow-[0_4px_12px_rgba(10,68,255,0.3)] hover:brightness-105"
+
+  const actionButtonStyle = accent === "orange"
+    ? { backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)" }
+    : { backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" }
 
   const handleHexInput = (value: string) => {
     const normalized = value.startsWith("#") ? value : `#${value}`
@@ -391,6 +395,7 @@ export default function ColorPickerPopup({ onClose, initialColor = "#FFFE00", on
           onFocus={playHoverSfx}
           onClick={() => { playClickSfx(); onClose(); }}
           className={`w-full py-[12px] text-[15px] font-bold rounded-xl text-white transition-all active:scale-[0.98] ${actionButtonClass}`}
+          style={actionButtonStyle}
         >
           Done
         </button>

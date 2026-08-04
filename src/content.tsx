@@ -223,7 +223,7 @@ export default function FloatingDockManager() {
   const [auditorySettings, setAuditorySettings] = useState<AuditorySettingsState>(DEFAULT_AUDITORY_SETTINGS)
   const [captionLanguage, setCaptionLanguage] = useState("EN-US")
   const [sourceLanguage, setSourceLanguage] = useState("en")
-  const [textSize, setTextSize] = useState(32)
+  const [textSize, setTextSize] = useState(20)
   const [captionTransparency, setCaptionTransparency] = useState(75)
   const [isFocusMode, setIsFocusMode] = useState(false)
   const [isCaptionsActive, setIsCaptionsActive] = useState(false)

@@ -120,8 +120,12 @@ export default function CaptionTransparencyOverlay({
   const secondaryText = isDark ? "text-gray-400" : "text-gray-500"
   const sliderUnfilled = isDark ? "#35353A" : "#E5E7EB"
   const previewBgClass = isDark
-    ? "bg-gradient-to-br from-[#202026] via-[#121214] to-[#080809]"
-    : "bg-gradient-to-br from-[#F7F7FA] via-[#EFEFF5] to-[#E7EAF0]"
+    ? ""
+    : ""
+    
+  const previewBgStyle = isDark
+    ? { backgroundImage: "linear-gradient(to bottom right, #202026, #121214, #080809)" }
+    : { backgroundImage: "linear-gradient(to bottom right, #F7F7FA, #EFEFF5, #E7EAF0)" }
   const previewGlowClass = isDark
     ? "opacity-35 bg-[radial-gradient(circle_at_top_right,rgba(255,122,47,0.25),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_35%)]"
     : "opacity-60 bg-[radial-gradient(circle_at_top_right,rgba(255,122,47,0.16),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(10,68,255,0.08),transparent_34%)]"
@@ -129,6 +133,9 @@ export default function CaptionTransparencyOverlay({
     ? "border-white/10 bg-black/35 text-white/80"
     : "border-black/10 bg-white/75 text-gray-700"
   const previewBaselineClass = isDark ? "from-black/45 to-transparent" : "from-white/65 to-transparent"
+  const previewBaselineStyle = isDark
+    ? { backgroundImage: "linear-gradient(to top, #141416 0%, transparent 100%)" }
+    : { backgroundImage: "linear-gradient(to top, #ffffff 0%, transparent 100%)" }
   const previewCaptionClass = isDark
     ? "text-white border-white/10"
     : "text-gray-950 border-black/10 shadow-[0_16px_40px_rgba(0,0,0,0.10)]"
@@ -160,7 +167,10 @@ export default function CaptionTransparencyOverlay({
 
         <div className="flex items-start justify-between gap-4 mb-4 mt-2">
           <div>
-            <h2 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A]">
+            <h2 
+              className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight px-1 pb-1"
+              style={{ backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)", WebkitBackgroundClip: "text", color: "transparent" }}
+            >
               Caption Transparency
             </h2>
             <p className={`mt-2 text-[13px] leading-relaxed max-w-[32rem] ${secondaryText}`}>
@@ -183,12 +193,15 @@ export default function CaptionTransparencyOverlay({
         </div>
 
         {/* Preview */}
-        <div className={`relative rounded-[20px] overflow-hidden mb-6 h-[170px] border ${isDark ? "border-white/10" : "border-black/5"} ${previewBgClass} shadow-inner`}>
+        <div 
+          className={`relative rounded-[20px] overflow-hidden mb-6 h-[170px] border ${isDark ? "border-white/10" : "border-black/5"} ${previewBgClass} shadow-inner flex flex-col justify-end`}
+          style={previewBgStyle}
+        >
           <div className={`absolute inset-0 ${previewGlowClass}`} />
           <div className={`absolute top-3.5 left-3.5 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] backdrop-blur-sm ${previewBadgeClass}`}>
             Live Preview
           </div>
-          <div className={`absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t ${previewBaselineClass}`} />
+          <div className={`absolute inset-x-0 bottom-0 h-16 ${previewBaselineClass}`} style={previewBaselineStyle} />
           <div
             className={`absolute bottom-5 left-1/2 -translate-x-1/2 w-[88%] flex flex-col gap-1.5 transition-colors duration-200`}
             style={{ 

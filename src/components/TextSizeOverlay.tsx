@@ -147,8 +147,12 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
   const inputBg = isDark ? "bg-[#2C2C2E]" : "bg-gray-50"
   const inputBorder = isDark ? "border-white/10" : "border-gray-200"
   const previewBgClass = isDark
-    ? "bg-gradient-to-br from-[#202026] via-[#121214] to-[#080809]"
-    : "bg-gradient-to-br from-[#F7F7FA] via-[#EEF1F6] to-[#E6EAF0]"
+    ? ""
+    : ""
+    
+  const previewBgStyle = isDark
+    ? { backgroundImage: "linear-gradient(to bottom right, #202026, #121214, #080809)" }
+    : { backgroundImage: "linear-gradient(to bottom right, #F7F7FA, #EEF1F6, #E6EAF0)" }
   const previewGlowClass = isDark
     ? "opacity-35 bg-[radial-gradient(circle_at_top_right,rgba(255,122,47,0.24),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_35%)]"
     : "opacity-55 bg-[radial-gradient(circle_at_top_right,rgba(255,122,47,0.16),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(10,68,255,0.08),transparent_34%)]"
@@ -189,7 +193,10 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
 
         <div className="flex items-start justify-between gap-4 mb-5 mt-1">
           <div>
-            <h2 className="mt-1 text-[26px] leading-tight font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A]">
+            <h2 
+              className="mt-1 text-[26px] leading-tight font-extrabold tracking-tight px-1 pb-1"
+              style={{ backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)", WebkitBackgroundClip: "text", color: "transparent" }}
+            >
               Caption Size
             </h2>
             <p className={`mt-2 text-[13px] leading-relaxed max-w-[32rem] ${secondaryText}`}>
@@ -213,7 +220,10 @@ export default function TextSizeOverlay({ isDark, onClose, initialSize = 32, onS
           </button>
         </div>
 
-        <div className={`relative rounded-[20px] overflow-hidden mb-6 h-[170px] border ${isDark ? "border-white/10" : "border-black/5"} ${previewBgClass} shadow-inner flex items-center justify-center`}>
+        <div 
+          className={`w-full h-[180px] rounded-[20px] overflow-hidden mb-6 relative border ${isDark ? "border-white/10" : "border-black/5"} ${previewBgClass} shadow-inner flex items-center justify-center`}
+          style={previewBgStyle}
+        >
           <div className={`absolute inset-0 ${previewGlowClass}`} />
           <div className={`absolute top-3.5 left-3.5 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] backdrop-blur-sm ${previewBadgeClass}`}>
             Live Preview

@@ -1213,7 +1213,10 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
   const iconColor = isDark ? "text-[#0A44FF]" : "text-[#0A44FF]"
 
   const renderToggleSwitch = (checked: boolean) => (
-    <div className={`w-12 h-7 rounded-full p-0.5 flex items-center transition-all duration-300 shadow-inner shrink-0 cursor-pointer ${checked ? "bg-gradient-to-r from-[#0A44FF] to-[#0099FF]" : isDark ? "bg-gray-600" : "bg-gray-300"}`}>
+    <div 
+      className={`w-12 h-7 rounded-full p-0.5 flex items-center transition-all duration-300 shadow-inner shrink-0 cursor-pointer ${checked ? "" : isDark ? "bg-gray-600" : "bg-gray-300"}`}
+      style={checked ? { backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" } : undefined}
+    >
       <div className={`w-6 h-6 rounded-full bg-white shadow-md border border-black/5 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${checked ? "translate-x-5" : "translate-x-0"}`} />
     </div>
   )
@@ -1246,7 +1249,10 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
         <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gray-400/30 pointer-events-none" />
 
         <div className="flex justify-between items-center mb-8 mt-2">
-          <h2 className="text-[26px] font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#0A44FF] to-[#0099FF]">
+          <h2 
+            className="text-[26px] font-bold tracking-tight px-1 pb-1"
+            style={{ backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)", WebkitBackgroundClip: "text", color: "transparent" }}
+          >
             Visual Settings
           </h2>
           <button
@@ -1604,14 +1610,17 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
                   className={`px-4 py-2.5 cursor-pointer block w-full text-left truncate transition-all font-medium m-1 rounded-lg ${speakingVoiceURI === voice.voiceURI
                     ? "bg-[#0A44FF]/30 text-[#0A44FF] shadow-inner border border-[#0A44FF]/50"
                     : selectedVoiceURI === voice.voiceURI
-                      ? "bg-gradient-to-r from-[#0A44FF] to-[#0099FF] text-white shadow-md"
+                      ? "text-white shadow-md"
                       : isDark
                         ? "text-gray-200 hover:bg-[#0A44FF]/20 hover:text-[#0A44FF]"
                         : "text-gray-700 hover:bg-[#0A44FF]/10 hover:text-[#0A44FF]"
                     }`}
                   onMouseEnter={() => { playHoverSfx(); previewVoice(voice) }}
                   onClick={() => { handleVoiceChange(voice.voiceURI); setIsVoiceDropdownOpen(false); window.speechSynthesis.cancel() }}
-                  style={{ fontFamily: `"${voice.name}", system-ui, sans-serif` }}
+                  style={selectedVoiceURI === voice.voiceURI 
+                    ? { fontFamily: `"${voice.name}", system-ui, sans-serif`, backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" } 
+                    : { fontFamily: `"${voice.name}", system-ui, sans-serif` }
+                  }
                 >
                   {simplifyVoiceName(voice.name)}{voice.voiceURI === defaultVoiceURIRef.current ? " (Default)" : ""}
                 </li>

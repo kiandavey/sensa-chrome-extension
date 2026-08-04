@@ -260,9 +260,14 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
     ? "hover:bg-white/8 hover:border-white/15 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
     : "hover:bg-black/5 hover:border-black/10"
   const iconColor = isDark ? "text-[#FF7A2F]" : "text-[#FF7A2F]"
-  const toggleSwitchClass = isDark
-    ? "relative inline-block w-12 h-7 rounded-full bg-[#3A3A3C] shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#FF7A2F]/50 peer-checked:bg-gradient-to-r peer-checked:from-[#FF7A2F] peer-checked:to-[#FF9F0A] peer-checked:shadow-[0_2px_14px_rgba(255,122,47,0.4)] peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#E8E8ED] after:border after:border-white/20 after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-[0_1px_4px_rgba(0,0,0,0.35)] peer-checked:after:border-white/40"
-    : "relative inline-block w-12 h-7 rounded-full bg-gray-300 shadow-inner peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#FF7A2F]/50 peer-checked:bg-gradient-to-r peer-checked:from-[#FF7A2F] peer-checked:to-[#FF9F0A] peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:border-gray-200 after:rounded-full after:h-6 after:w-6 after:transition-all"
+  const renderToggleSwitch = (checked: boolean) => (
+    <div 
+      className={`w-12 h-7 rounded-full p-0.5 flex items-center transition-all duration-300 shadow-inner shrink-0 cursor-pointer ${checked ? "" : isDark ? "bg-[#3A3A3C]" : "bg-gray-300"}`}
+      style={checked ? { backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)" } : undefined}
+    >
+      <div className={`w-6 h-6 rounded-full bg-white shadow-md border border-black/5 transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${checked ? "translate-x-5" : "translate-x-0"}`} />
+    </div>
+  )
 
   return (
     <div 
@@ -292,7 +297,10 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
           <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gray-400/30 pointer-events-none" />
 
           <div className="flex justify-between items-center mb-8 mt-2">
-            <h2 className="text-[26px] font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A]">
+            <h2 
+              className="text-[26px] font-bold tracking-tight px-1 pb-1"
+              style={{ backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)", WebkitBackgroundClip: "text", color: "transparent" }}
+            >
               Auditory Settings
             </h2>
             <button 
@@ -365,8 +373,11 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
                           <li
                             key={font.family} role="option" aria-selected={settings.fontFamily === font.family}
                             onMouseDown={(e) => { e.preventDefault(); handleFontSelect(font.family) }}
-                            className={`px-4 py-2.5 cursor-pointer block w-full text-left truncate transition-all font-medium m-1 rounded-lg ${settings.fontFamily === font.family ? "bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A] text-white shadow-md" : isDark ? "text-gray-200 hover:bg-[#FF7A2F]/20 hover:text-[#FF7A2F]" : "text-gray-700 hover:bg-[#FF7A2F]/10 hover:text-[#FF7A2F]"}`}
-                            style={{ fontFamily: `"${font.family}", system-ui, sans-serif` }}
+                            className={`px-4 py-2.5 cursor-pointer block w-full text-left truncate transition-all font-medium m-1 rounded-lg ${settings.fontFamily === font.family ? "text-white shadow-md" : isDark ? "text-gray-200 hover:bg-[#FF7A2F]/20 hover:text-[#FF7A2F]" : "text-gray-700 hover:bg-[#FF7A2F]/10 hover:text-[#FF7A2F]"}`}
+                            style={settings.fontFamily === font.family 
+                              ? { fontFamily: `"${font.family}", system-ui, sans-serif`, backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)" } 
+                              : { fontFamily: `"${font.family}", system-ui, sans-serif` }
+                            }
                           >
                             {font.family}
                           </li>
@@ -404,7 +415,7 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
                     chrome.storage.local.set({ sensa_loud_noise_alerts: val })
                   }}
                 />
-                <span className={toggleSwitchClass} aria-hidden="true" />
+                {renderToggleSwitch(loudNoiseAlerts)}
               </span>
             </label>
 
@@ -447,7 +458,7 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
                     persistSettings({ showOriginalText: e.target.checked });
                   }}
                 />
-                <span className={toggleSwitchClass} aria-hidden="true" />
+                {renderToggleSwitch(settings.translationEnabled === false ? true : settings.showOriginalText)}
               </span>
             </label>
 
@@ -478,7 +489,7 @@ export default function AuditorySettingsModal({ isDark, onClose }: AuditorySetti
                     }
                   }}
                 />
-                <span className={toggleSwitchClass} aria-hidden="true" />
+                {renderToggleSwitch(settings.translationEnabled !== false)}
               </span>
             </label>
 

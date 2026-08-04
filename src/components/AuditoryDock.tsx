@@ -523,15 +523,18 @@ export default function AuditoryDock({
   const closeBtnClass = `${btnBaseClass} text-gray-500 dark:text-gray-400 transition-all duration-200 active:scale-90 hover:scale-105 ${isDark ? 'hover:bg-red-500/80 hover:text-white' : 'hover:bg-red-500/90 hover:text-white'}`
 
   const activeButtonClass = `
-    bg-gradient-to-br from-[#FF7A2F] to-[#E86A25] 
     text-white shadow-[0_4px_20px_rgba(255,122,47,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]
     hover:shadow-[0_4px_25px_rgba(255,122,47,0.6),inset_0_1px_0_rgba(255,255,255,0.3)]
     scale-105 ring-[0px] ring-[#FF7A2F]/0
   `
 
   const dividerClass = isDark
-    ? "w-6 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-0.5"
-    : "w-6 h-px bg-gradient-to-r from-transparent via-black/10 to-transparent my-0.5"
+    ? "w-6 h-px my-0.5"
+    : "w-6 h-px my-0.5"
+    
+  const dividerStyle = isDark
+    ? { backgroundImage: "linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent)" }
+    : { backgroundImage: "linear-gradient(to right, transparent, rgba(0,0,0,0.1), transparent)" }
 
   return (
     <div
@@ -564,7 +567,7 @@ export default function AuditoryDock({
           </svg>
         </div>
 
-        <div className={dividerClass} />
+        <div className={dividerClass} style={dividerStyle} />
 
         <button
           type="button"
@@ -572,8 +575,9 @@ export default function AuditoryDock({
           aria-pressed={isCaptionsActive}
           className={`${btnBaseClass} relative z-10 active:scale-90 ${isCaptionsActive
             ? activeButtonClass
-            : `bg-gradient-to-br from-[#FF7A2F] to-[#E86A25] text-white/90 shadow-[0_2px_12px_rgba(255,122,47,0.3)] hover:shadow-[0_4px_20px_rgba(255,122,47,0.5)] hover:scale-105`
+            : `text-white/90 shadow-[0_2px_12px_rgba(255,122,47,0.3)] hover:shadow-[0_4px_20px_rgba(255,122,47,0.5)] hover:scale-105`
             }`}
+          style={{ backgroundImage: "linear-gradient(to bottom right, #FF7A2F, #E86A25)" }}
         >
           <SharedTooltip label={isCaptionsActive ? "Turn Off Captions" : "Turn On Captions"} isDark={isDark} isAuditory />
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="!w-[22px] !h-[22px] shrink-0">

@@ -95,7 +95,10 @@ export default function AuditoryMode({ isDark }: AuditoryModeProps) {
           >
             <div className={`absolute inset-0 rounded-full pointer-events-none transition-opacity duration-700 ease-out ${isCapturing ? 'opacity-100 animate-auditory-glow' : 'opacity-0'}`} />
 
-            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+            <div 
+              className="absolute inset-0 rounded-full pointer-events-none" 
+              style={{ backgroundImage: "linear-gradient(to bottom, rgba(255,255,255,0.25), transparent)" }}
+            />
 
             <div className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none">
               <div className={`absolute w-[76px] h-[58px] bg-white rounded-[16px] flex items-center justify-center select-none shadow-[0_4px_12px_rgba(0,0,0,0.15)] ${springTransition} ${isCapturing ? 'opacity-100 scale-100' : 'opacity-0 scale-150'}`}>

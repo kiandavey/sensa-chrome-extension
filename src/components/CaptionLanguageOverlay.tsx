@@ -418,7 +418,10 @@ export default function CaptionLanguageOverlay({
         {/* Flex Header matching AuditorySettingsModal */}
         <div className="flex items-start justify-between gap-4 mb-5 mt-1">
           <div className="flex-1 min-w-0 pr-2">
-            <h2 className="!m-0 !p-0 !block text-[26px] font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A]">
+            <h2 
+              className="!m-0 !p-0 !block text-[26px] font-bold tracking-tight px-1 pb-1"
+              style={{ backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)", WebkitBackgroundClip: "text", color: "transparent" }}
+            >
               Language Settings
             </h2>
             <div className="!mt-2 !mb-0 !flex !items-center !flex-wrap !gap-1.5 text-[13px] leading-relaxed">
@@ -544,11 +547,12 @@ export default function CaptionLanguageOverlay({
                   aria-selected={isSelected}
                   className={`w-full text-left min-h-[48px] px-5 py-3 transition-all flex items-center justify-between border-b last:border-0 ${isDark ? "border-white/5" : "border-gray-200/60"} focus-visible:outline-none focus-visible:bg-[#FF7A2F]/20 ${
                     isSelected
-                      ? "bg-gradient-to-r from-[#FF7A2F] to-[#FF9F0A] text-white font-bold shadow-md"
+                      ? "text-white font-bold shadow-md"
                       : isDark
                         ? "text-gray-200 hover:bg-white/5 hover:text-white hover:pl-6"
                         : "text-gray-800 hover:bg-[#FF7A2F]/10 hover:text-[#FF7A2F] hover:pl-6"
                   }`}
+                  style={isSelected ? { backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9F0A)" } : undefined}
                 >
                   <span className="font-semibold text-[15px]">{language.label}</span>
                   {isSelected && (

@@ -771,7 +771,10 @@ export default function ModeSelection({ theme, onSelectMode }: ModeSelectionProp
             alt="Sensa Logo"
             className="w-[98px] h-[98px] object-contain drop-shadow-md animate-logo-light mt-1 -mb-3"
           />
-          <h1 className="text-[30px] font-black tracking-tight leading-tight animate-pop bg-gradient-to-r from-[#0A44FF] to-[#FF7A2F] bg-clip-text text-transparent pb-0.5" style={{ animationDelay: "0.05s" }}>
+          <h1 
+            className="text-[30px] font-black tracking-tight leading-tight animate-pop px-2 pb-1" 
+            style={{ animationDelay: "0.05s", backgroundImage: "linear-gradient(to right, #0A44FF, #FF7A2F)", WebkitBackgroundClip: "text", color: "transparent" }}
+          >
             Welcome to Sensa
           </h1>
           <p className={`text-[13px] font-medium text-center leading-relaxed tracking-wide my-1.5 animate-pop ${isDark ? 'text-gray-300/95' : 'text-gray-600/95'}`} style={{ animationDelay: "0.1s" }}>

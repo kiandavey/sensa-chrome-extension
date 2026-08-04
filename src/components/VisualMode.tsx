@@ -556,7 +556,10 @@ export default function VisualMode({ isActiveView = true }: VisualModeProps) {
           >
             <div className={`absolute inset-0 rounded-full pointer-events-none transition-opacity duration-700 ease-out ${isListening ? 'opacity-100 animate-visual-pulse-glow' : 'opacity-0'}`} />
 
-            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+            <div 
+              className="absolute inset-0 rounded-full pointer-events-none" 
+              style={{ backgroundImage: "linear-gradient(to bottom, rgba(255,255,255,0.25), transparent)" }}
+            />
 
             <div className="relative z-10 flex items-center justify-center w-full h-full pointer-events-none">
               {isListening ? (

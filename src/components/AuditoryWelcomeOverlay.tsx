@@ -89,7 +89,10 @@ export default function AuditoryWelcomeOverlay({ theme, onGetStarted }: WelcomeP
 
         {/* Header (No Logo, Perfectly Centered) */}
         <div className="flex flex-col items-center w-full mb-5">
-          <h1 className="text-[34px] font-black tracking-tight leading-none mb-2.5 fade-in-1 text-center bg-gradient-to-r from-[#FF7A2F] to-[#FF9E66] bg-clip-text text-transparent px-2 pb-1 overflow-visible">
+          <h1 
+            className="text-[34px] font-black tracking-tight leading-none mb-2.5 fade-in-1 text-center px-2 pb-1 overflow-visible"
+            style={{ backgroundImage: "linear-gradient(to right, #FF7A2F, #FF9E66)", WebkitBackgroundClip: "text", color: "transparent" }}
+          >
             Auditory Mode
           </h1>
           <p className={`text-[14.5px] font-medium text-center leading-relaxed fade-in-2 px-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>

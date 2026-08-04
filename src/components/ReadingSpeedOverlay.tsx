@@ -671,7 +671,10 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 rounded-full bg-gray-400/30 pointer-events-none" />
 
           <div className="flex items-center justify-between mb-6 mt-2">
-            <h2 className="text-[26px] font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#0A44FF] to-[#0099FF]">
+            <h2 
+              className="text-[26px] font-bold tracking-tight px-1 pb-1"
+              style={{ backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)", WebkitBackgroundClip: "text", color: "transparent" }}
+            >
               Reading Speed
             </h2>
 
@@ -705,7 +708,8 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
               {/* Minus Button */}
               <button
                 onClick={handleDecrease}
-                className="w-[52px] h-[52px] flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#0A44FF] to-[#0099FF] hover:brightness-105 hover:-translate-y-[1px] hover:shadow-[0_16px_24px_-14px_rgba(10,68,255,0.7)] text-white rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A44FF]/50 shadow-lg"
+                className="w-[52px] h-[52px] flex-shrink-0 flex items-center justify-center hover:brightness-105 hover:-translate-y-[1px] hover:shadow-[0_16px_24px_-14px_rgba(10,68,255,0.7)] text-white rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A44FF]/50 shadow-lg"
+                style={{ backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" }}
                 aria-label="Decrease speed"
                 {...getHoverHandlers("Decrease speed")}
               >
@@ -788,7 +792,8 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
               {/* Plus Button */}
               <button
                 onClick={handleIncrease}
-                className="w-[52px] h-[52px] flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-[#0A44FF] to-[#0099FF] hover:brightness-105 hover:-translate-y-[1px] hover:shadow-[0_16px_24px_-14px_rgba(10,68,255,0.7)] text-white rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A44FF]/50 shadow-lg"
+                className="w-[52px] h-[52px] flex-shrink-0 flex items-center justify-center hover:brightness-105 hover:-translate-y-[1px] hover:shadow-[0_16px_24px_-14px_rgba(10,68,255,0.7)] text-white rounded-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A44FF]/50 shadow-lg"
+                style={{ backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" }}
                 aria-label="Increase speed"
                 {...getHoverHandlers("Increase speed")}
               >
@@ -805,16 +810,15 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
                   key={stop}
                   onClick={() => {
                     setSpeed(stop)
-                    onSpeedChange?.(stop)
-                    playClickSfx()
-                    playClickAudio(`${stop}x`)
+                    wrappedPlayClickAudio(`Speed set to ${stop}x`)
                   }}
-                  aria-pressed={speed === stop}
-                  {...getHoverHandlers(`${stop}x`)}
                   className={`flex-1 h-[42px] overflow-hidden bg-clip-padding rounded-full text-[14px] font-semibold transition-all duration-200 border border-transparent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A44FF]/50 ${speed === stop
-                      ? "bg-gradient-to-r from-[#0A44FF] to-[#0099FF] text-white shadow-lg border-[#4FA5FF]/40"
-                      : `${quickChipClass} hover:border-[#0A44FF]/20 hover:-translate-y-[1px] hover:shadow-[0_10px_18px_-14px_rgba(10,68,255,0.35)]`
+                    ? "text-white shadow-lg border-[#4FA5FF]/40"
+                    : `${quickChipClass} hover:border-[#0A44FF]/20 hover:-translate-y-[1px] hover:shadow-[0_10px_18px_-14px_rgba(10,68,255,0.35)]`
                     }`}
+                  style={speed === stop ? { backgroundImage: "linear-gradient(to right, #0A44FF, #0099FF)" } : undefined}
+                  aria-label={`Set speed to ${stop}x`}
+                  {...getHoverHandlers(`Set speed to ${stop}x`)}
                 >
                   {stop}x
                 </button>
