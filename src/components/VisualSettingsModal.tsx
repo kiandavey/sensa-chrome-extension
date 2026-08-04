@@ -572,7 +572,12 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
   React.useEffect(() => {
     const loadVoices = () => {
       // Filter out Vernon because it essentially just aliases to Microsoft Mark on Windows anyway
-      const availableVoices = window.speechSynthesis.getVoices().filter(v => !v.name.includes("Vernon"))
+      // Also filter out Harley in Brave as requested
+      const availableVoices = window.speechSynthesis.getVoices().filter(v => {
+        if (v.name.includes("Vernon")) return false;
+        if (isBrave && v.name.toLowerCase().includes("harley")) return false;
+        return true;
+      })
       if (availableVoices.length > 0) {
         const defaultVoice = availableVoices.find((v) => v.name.includes("Google US English")) || availableVoices.find((v) => (v.lang === "en-US" || v.lang.startsWith("en")) && !v.name.includes("David")) || availableVoices.find((v) => v.lang === "en-US" || v.lang.startsWith("en")) || availableVoices[0]
         defaultVoiceURIRef.current = defaultVoice?.voiceURI || ""
@@ -599,7 +604,7 @@ export default function VisualSettingsModal({ onClose, isDark = false, isVoiceCo
     }
     loadVoices()
     window.speechSynthesis.onvoiceschanged = loadVoices
-  }, [])
+  }, [isBrave])
   const [isTabVisible, setIsTabVisible] = useState(!document.hidden)
 
   useEffect(() => {

@@ -16,6 +16,17 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Readability } from "@mozilla/readability";
+
+declare global {
+  interface Window {
+    ai?: {
+      createTextSession: () => Promise<{
+        prompt: (text: string) => Promise<string>;
+      }>;
+    };
+  }
+}
 
 const READABLE_SELECTOR = "h1, h2, h3, h4, h5, h6, p, li, blockquote, pre";
 const EXCLUDED_ANCESTOR_SELECTOR =
@@ -145,6 +156,38 @@ const shouldSplitAtDot = (text: string, dotIndex: number) => {
   }
 
   return true;
+};
+
+// Deep DOM Traversal Helper for Shadow DOM Penetration
+const getAllLiveElements = (root: Document | Element | ShadowRoot, elements: HTMLElement[] = []) => {
+  const children = root.querySelectorAll('*');
+  children.forEach((el) => {
+    if (el instanceof HTMLElement) elements.push(el);
+    if (el.shadowRoot) {
+      getAllLiveElements(el.shadowRoot, elements);
+    }
+  });
+  return elements;
+};
+
+// Deep Clone Helper that flattens Shadow DOMs into standard Light DOM divs for Readability parsing
+const cloneWithShadows = (original: Node): Node => {
+  const clone = original.cloneNode(false);
+  
+  if (original instanceof Element && original.shadowRoot && clone instanceof Element) {
+    const shadowWrapper = document.createElement('div');
+    shadowWrapper.setAttribute('data-sensa-shadow-wrapper', 'true');
+    original.shadowRoot.childNodes.forEach(child => {
+      shadowWrapper.appendChild(cloneWithShadows(child));
+    });
+    clone.appendChild(shadowWrapper);
+  }
+  
+  original.childNodes.forEach(child => {
+    clone.appendChild(cloneWithShadows(child));
+  });
+  
+  return clone;
 };
 
 const isVisible = (el: HTMLElement) => {
@@ -392,13 +435,82 @@ export function useSpeech(
     clearSentenceOverlay();
   }, [clearSentenceOverlay, isVisualModeActive]);
 
-  const extractReadableContent = useCallback(() => {
-    const root =
-      (document.querySelector("main, article, [role='main']") as HTMLElement | null) ?? document.body;
+  const extractReadableContent = useCallback(async () => {
+    let elements: HTMLElement[] = [];
 
-    const elements = Array.from(root.querySelectorAll<HTMLElement>(READABLE_SELECTOR)).filter(
-      (el) => isVisible(el) && isReadable(el)
-    );
+    try {
+      // 1. Inject Sensa-IDs into all live DOM elements (including Shadow DOMs!)
+      let idCounter = 0;
+      const allLiveElements = getAllLiveElements(document);
+      allLiveElements.forEach((el) => {
+        if (!el.hasAttribute('data-sensa-id')) {
+          el.setAttribute('data-sensa-id', `sensa-id-${idCounter++}`);
+        }
+      });
+
+      // 2. Clone the document and flatten Shadow DOMs so Readability can see them
+      const clone = cloneWithShadows(document) as Document;
+      const reader = new Readability(clone);
+      const article = reader.parse();
+
+      if (article && article.content) {
+        // 3. Scan the parsed clean HTML for surviving Sensa-IDs
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = article.content;
+        const validIds = new Set<string>();
+        tempDiv.querySelectorAll('[data-sensa-id]').forEach((el) => {
+          const id = el.getAttribute('data-sensa-id');
+          if (id) validIds.add(id);
+        });
+
+        // 4. Query live DOM for elements with surviving IDs
+        // Note: allLiveElements already pierced the Shadow DOMs, so we just filter it!
+        const liveValidElements = allLiveElements.filter(el => 
+          validIds.has(el.getAttribute('data-sensa-id') as string)
+        );
+
+        elements = liveValidElements.filter(
+          (el) => el.matches(READABLE_SELECTOR) && isVisible(el) && isReadable(el)
+        );
+      }
+    } catch (e) {
+      console.warn("[Sensa] Readability/Shadow DOM parsing failed, falling back to basic extraction.", e);
+    }
+
+    // Fallback 1: Standard Extraction
+    if (elements.length === 0) {
+      const root =
+        (document.querySelector("main, article, [role='main']") as HTMLElement | null) ?? document.body;
+
+      // Note: We don't pierce shadow DOMs in standard fallback to avoid noise
+      elements = Array.from(root.querySelectorAll<HTMLElement>(READABLE_SELECTOR)).filter(
+        (el) => isVisible(el) && isReadable(el)
+      );
+    }
+
+    // Fallback 2: Semantic AI Pre-Processing (Gemini Nano)
+    if (elements.length === 0 && window.ai && typeof window.ai.createTextSession === 'function') {
+      try {
+        console.log("[Sensa] Attempting Semantic AI Pre-Processing fallback via window.ai...");
+        const session = await window.ai.createTextSession();
+        // Grab a noisy string of the page body
+        const rawText = document.body.innerText.substring(0, 4000); 
+        const extracted = await session.prompt(`Extract only the primary article text from this content, ignore navigation and ads: ${rawText}`);
+        
+        if (extracted) {
+          console.log("[Sensa] AI Extracted content:", extracted);
+          // Create an invisible virtual element to hold the AI text so the rest of the pipeline works
+          const aiElement = document.createElement('div');
+          aiElement.innerText = extracted;
+          aiElement.style.display = 'none';
+          aiElement.setAttribute('data-sensa-ai-fallback', 'true');
+          document.body.appendChild(aiElement);
+          elements = [aiElement];
+        }
+      } catch (e) {
+        console.warn("[Sensa] window.ai Semantic AI Fallback failed:", e);
+      }
+    }
 
     const segments: SentenceSegment[] = [];
     elements.forEach((element, elementIndex) => {

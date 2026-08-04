@@ -193,6 +193,9 @@ const primeMicrophone = async () => {
   })
   if (!isSpeechSupported) return
 
+  const isBrave = await isBraveBrowser()
+  if (isBrave) return
+
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
     throw new Error("navigator.mediaDevices.getUserMedia is not available")
   }

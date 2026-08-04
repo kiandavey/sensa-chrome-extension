@@ -12,6 +12,7 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "annyang": "^3.0.0",
     "motion": "^12.38.0",
     "plasmo": "0.90.5",
@@ -25,6 +26,7 @@
     "@playwright/test": "^1.61.1",
     "@types/annyang": "^2.6.5",
     "@types/chrome": "0.0.258",
+    "@types/mozilla-readability": "^0.2.1",
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",

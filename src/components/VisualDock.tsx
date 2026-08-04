@@ -443,6 +443,18 @@ function ScreenMagnifierOverlay({ isDark, onClose }: { isDark: boolean; onClose:
     Array.from(bodyClone.getElementsByClassName("sensa-ui-root")).forEach(e => e.remove())
     Array.from(bodyClone.querySelectorAll("[data-sensa-visual-dock], [data-sensa-magnifier-lens]")).forEach(e => e.remove())
 
+    // Strip video/audio sources to prevent massive CPU/Network stuttering from double-buffering media in the clone
+    Array.from(bodyClone.getElementsByTagName("video")).forEach(v => {
+      v.removeAttribute("src")
+      v.removeAttribute("autoplay")
+      v.innerHTML = ""
+    })
+    Array.from(bodyClone.getElementsByTagName("audio")).forEach(a => {
+      a.removeAttribute("src")
+      a.removeAttribute("autoplay")
+      a.innerHTML = ""
+    })
+
     // Preserve body margin and padding to ensure 100% pixel-perfect alignment with original page layout
     bodyClone.style.pointerEvents = "none"
     try {
@@ -542,7 +554,7 @@ function ScreenMagnifierOverlay({ isDark, onClose }: { isDark: boolean; onClose:
 
       if (shouldUpdate) {
         const now = performance.now()
-        if (now - lastUpdate > 100) { // Max 10 updates per second (10fps) for smooth tracking
+        if (now - lastUpdate > 200) { // Max 5 updates per second (5fps) to save CPU while feeling live
           updateSnapshot()
           lastUpdate = performance.now()
         } else {
@@ -550,7 +562,7 @@ function ScreenMagnifierOverlay({ isDark, onClose }: { isDark: boolean; onClose:
           throttleTimer = setTimeout(() => {
             updateSnapshot()
             lastUpdate = performance.now()
-          }, 100 - (now - lastUpdate))
+          }, 200 - (now - lastUpdate))
         }
       }
     })
@@ -946,7 +958,7 @@ export default function VisualDock({
 
         chrome.storage.local.set({ sensa_last_voice_reminder_time: now })
 
-        if (!cbsAsync.isBrave) {
+        if (cbsAsync.isBrave === false) {
           if (cbsAsync.isVoiceCommandActive) {
             cbsAsync.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
           } else {
@@ -966,7 +978,7 @@ export default function VisualDock({
         const cbs = callbacksRef.current
         if (!(cbs.isPlaying && !cbs.isPaused) && !cbs.isVoiceCommandsSuspended && document.visibilityState === "visible" && Date.now() - lastUISpeechTimeRef.current >= lastUISpeechDurationRef.current && !isSpeechBusy()) {
           chrome.storage.local.set({ sensa_last_voice_reminder_time: Date.now() })
-          if (!cbs.isBrave) {
+          if (cbs.isBrave === false) {
             if (cbs.isVoiceCommandActive) {
               cbs.playClickAudio("You can say 'commands' when you want to know the list of commands for the visual dock.")
             } else {
@@ -1388,7 +1400,7 @@ export default function VisualDock({
             if (canToggleVoiceMode && wakeMatched) {
               applyCommand("activate-voice", () => {
                 lockVoiceToggle()
-              if (!callbacksRef.current.isBrave) {
+              if (callbacksRef.current.isBrave === false) {
                 callbacksRef.current.playClickAudio?.("Voice commands activated. You can say 'commands' when you want to know the list of commands for the visual dock.")
               } else {
                 callbacksRef.current.playClickAudio?.("Voice commands activated.")
@@ -1692,7 +1704,7 @@ export default function VisualDock({
         >
           <Tooltip label="Audio Visualizer" isDark={isDark} />
           <GodTierMicIcon
-            isBrave={isBrave === true}
+            isBrave={isBrave !== false}
             isActive={isVoiceCommandActive && isBrave === false}
             onSoundDetected={() => {
               if (resetSilenceTimerRef.current) resetSilenceTimerRef.current()
