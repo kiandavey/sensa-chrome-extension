@@ -3,16 +3,17 @@
  * @description Core screen reading text-to-speech (TTS) engine and sentence highlight visualizer for Visual Mode.
  *
  * Architectural Overview:
- * 1. DOM Text Extraction (`extractReadableContent`):
- *    - Traverses the document (`main`, `article`, or `body`), filtering out hidden elements and navigation headers (`EXCLUDED_ANCESTOR_SELECTOR`).
- *    - Splits text into speakable sentence ranges (`splitSentenceRanges`) while respecting common abbreviations (`COMMON_ABBREVIATIONS`) like "U.S.", "Dr.", "e.g." so sentences aren't split prematurely.
+ * 1. Multi-Layered Content Extraction (`extractReadableContent`):
+ *    - Extractor Pipeline: 
+ *      1. Readability.js: Injects `data-sensa-id` tracking tags, clones the DOM, and runs Mozilla's Readability heuristics to strip ads/navbars and isolate the core article text.
+ *      2. Deep-Pierce Flattener: Recursively penetrates Shadow DOMs and Iframes to extract encapsulated text.
+ *      3. Standard Fallback: Directly queries `document.body` if heuristics fail.
+ *      4. Semantic AI (Gemini Nano): Invokes Chrome's `window.ai` as a final fallback to summarize heavily obfuscated sites.
  *
- * 2. Speech Normalization (`normalizeSpeechSlice`):
- *    - Pre-processes text before sending to `window.speechSynthesis` (e.g., expanding "No. 5" to "number 5") while maintaining character mapping back to the original DOM text for accurate word boundary highlighting.
- *
- * 3. Highlight Overlay & Auto-scroll (`renderSegmentOverlay`):
- *    - Creates an absolute-positioned overlay div matching the `getClientRects()` of the currently spoken sentence range.
- *    - Smoothly auto-scrolls the browser window to keep the active sentence vertically centered.
+ * 2. Speech Normalization & Highlighting (`normalizeSpeechSlice` & `renderSegmentOverlay`):
+ *    - Breaks the extracted Readability text into spoken sentence boundaries while respecting common abbreviations.
+ *    - Maps the spoken words back to the physical screen coordinates using the injected `data-sensa-id` tags.
+ *    - Renders absolute-positioned overlay highlights and smoothly auto-scrolls to keep the active sentence vertically centered.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -491,14 +492,14 @@ export function useSpeech(
     // Fallback 2: Semantic AI Pre-Processing (Gemini Nano)
     if (elements.length === 0 && window.ai && typeof window.ai.createTextSession === 'function') {
       try {
-        console.log("[Sensa] Attempting Semantic AI Pre-Processing fallback via window.ai...");
+        // console.info("[Sensa] Attempting Semantic AI Pre-Processing fallback via window.ai...");
         const session = await window.ai.createTextSession();
         // Grab a noisy string of the page body
         const rawText = document.body.innerText.substring(0, 4000); 
         const extracted = await session.prompt(`Extract only the primary article text from this content, ignore navigation and ads: ${rawText}`);
         
         if (extracted) {
-          console.log("[Sensa] AI Extracted content:", extracted);
+          // console.info("[Sensa] AI Extracted content success");
           // Create an invisible virtual element to hold the AI text so the rest of the pipeline works
           const aiElement = document.createElement('div');
           aiElement.innerText = extracted;

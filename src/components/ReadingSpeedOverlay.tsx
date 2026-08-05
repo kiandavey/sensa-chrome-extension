@@ -513,7 +513,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
         if (!cleanText) return
 
         const ts = new Date().toISOString().substring(11, 23)
-        console.log(`[${ts}] [Sensa Speed Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
+        // console.log(`[${ts}] [Sensa Speed Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
 
         const paddedSpeech = ` ${cleanText} `
         const check = (...words: string[]) => words.some(w => paddedSpeech.includes(` ${w} `))
@@ -528,7 +528,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
           consumedKeywords.push(...keywordsToConsume)
           matchedCmd = true
           const ts = new Date().toISOString().substring(11, 23)
-          console.log(`[${ts}] [Sensa Speed Voice Bridge] Score results -> Executing command: "${commandName}"`)
+          // console.log(`[${ts}] [Sensa Speed Voice Bridge] Score results -> Executing command: "${commandName}"`)
           action()
         }
 
@@ -575,7 +575,7 @@ export default function ReadingSpeedOverlay({ onClose, initialSpeed = 1, onSpeed
 
         if (!matchedCmd) {
           const ts = new Date().toISOString().substring(11, 23)
-          console.log(`[${ts}] [Sensa Speed Voice Bridge] Score results -> No command matched for transcript: "${cleanText}"`)
+          // console.log(`[${ts}] [Sensa Speed Voice Bridge] Score results -> No command matched for transcript: "${cleanText}"`)
         }
       }
 

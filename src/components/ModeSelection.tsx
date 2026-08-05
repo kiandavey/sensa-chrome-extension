@@ -269,7 +269,7 @@ export default function ModeSelection({ theme, onSelectMode }: ModeSelectionProp
         } else if (msg.level === "warn") {
           console.warn(prefix, msg.message)
         } else {
-          console.log(prefix, msg.message)
+          // console.log(prefix, msg.message)
         }
       }
     }

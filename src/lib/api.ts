@@ -31,7 +31,7 @@ export function connectToLocalServer(
   let audioEl: HTMLAudioElement | null = null
 
   socket.addEventListener("open", () => {
-    console.log("Connected to Sensa STT backend")
+    // console.log("Connected to Sensa STT backend")
 
     // 1. Audio Playback Bridge: Play captured audio via HTML5 Audio element to preserve user listening experience
     audioEl = new Audio()

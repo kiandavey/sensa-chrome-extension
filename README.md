@@ -55,12 +55,17 @@ The modern web is primarily designed for unimpaired audio-visual consumption. Us
   * Implements weighted Levenshtein distance algorithms and N-gram token matching to resolve vocal ambiguities and speech-to-text phonetic collisions (e.g., distinguishing between *"inter"* / *"center"* and *"enter"*).
   * Employs hard-coded phonetic dictionaries to catch and auto-correct notorious Web Speech API misinterpretations (e.g., mapping *"in greece"* to *"increase"* or *"degrees"* to *"decrease"*).
   * Features aggressive Phrase Index Guarding and command debouncing (200ms buffers) to filter out rapid duplicate callbacks from Chrome's STT pipeline.
-* **📖 Smart Reader & TTS Narration (`useSpeech.ts` & `ReadingSpeedOverlay.tsx`):**
-  * Reads web page text aloud using `window.speechSynthesis` with selectable system voices and real-time reading speed controls (0.5x to 2.0x).
-  * Utilizes robust fallback initialization and Chromium dummy-utterance "kickstarts" to guarantee high-quality network voices (e.g., Google US English) bypass legacy fallback voices like Microsoft Mark.
-  * Triggers immediate auditory sample previews whenever speed settings are adjusted.
-* **🔍 Interactive Screen Magnifier (`Magnifier.tsx`):**
+* **📖 Smart Reader & Advanced AI Extraction (`useSpeech.ts` & `ReadingSpeedOverlay.tsx`):**
+  * **4-Layer Content Extraction Pipeline:** Sensa utilizes an industry-leading DOM extraction engine capable of navigating chaotic, heavily-cluttered websites.
+    1. **Mozilla Readability Engine:** Clones the DOM and passes it through `Readability.js`, utilizing machine learning heuristics to automatically score elements and strip away ads, navbars, and sidebars to extract pure article text.
+    2. **Sensa-ID Injection:** Injects tracking tags into live DOM elements before cloning, allowing Sensa to perfectly map the cleaned Readability text back to the physical screen coordinates for its visual highlighting boxes.
+    3. **Deep-Pierce Flattener:** Recursively crawls the DOM to penetrate restricted Web Components (`Shadow DOM`), flattening them into standard HTML so the Readability engine can see them.
+    4. **Semantic AI Fallback (Gemini Nano):** If a website's layout is completely broken, Sensa intercepts the HTML and utilizes Chrome's built-in `window.ai` (Gemini Nano) to semantically extract and summarize the core reading text.
+  * Reads the extracted text aloud using `window.speechSynthesis` with selectable system voices and real-time reading speed controls (0.5x to 2.0x).
+  * Utilizes robust fallback initialization to guarantee high-quality network voices (e.g., Google US English) bypass legacy fallback voices like Microsoft Mark.
+* **🔍 Interactive Screen Magnifier (`VisualDock.tsx`):**
   * Creates a responsive, high-contrast magnifying lens that enlarges text and DOM elements on hover for users with low vision.
+  * **High-Performance Static Engine:** Utilizes an optimized, throttled 5fps `MutationObserver` combined with aggressive `<video>` and media source stripping to prevent massive double-buffering CPU stuttering on heavily animated websites.
 * **🛡️ Zero-Latency Focus Mode (`FocusModeOverlay.tsx`):**
   * A screen-dimming overlay that eliminates visual clutter around media content.
   * Uses a continuous `requestAnimationFrame` loop to track active video players and subtitle boxes, manipulating SVG mask coordinates directly via React refs at 60fps without triggering React re-render lag during rapid page scrolling.

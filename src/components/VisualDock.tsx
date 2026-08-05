@@ -12,7 +12,9 @@
  *    - Animates visualizer bars based on root-mean-square (RMS) speech energy to provide immediate feedback when user speech is detected.
  *
  * 3. Screen Magnifier Overlay (`ScreenMagnifierOverlay`):
- *    - Renders a floating circular lens that clones and scales the underlying page DOM and `<canvas>` elements.
+ *    - Renders a floating circular lens that clones and scales the underlying page DOM.
+ *    - Uses an optimized 5fps throttled `MutationObserver` to provide live updates without freezing the browser.
+ *    - Aggressively strips `<video>` and `<audio>` sources from the clone to prevent double-buffering network stutters on media-heavy pages.
  *    - Automatically hides when hovering over Sensa UI panels to prevent obstructing controls.
  */
 
@@ -1329,7 +1331,7 @@ export default function VisualDock({
           if (!cleanText || Date.now() < ignoreSpeechUntil) return false
 
           const ts = new Date().toISOString().substring(11, 23)
-          console.log(`[${ts}] [Sensa Dock Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
+          // console.log(`[${ts}] [Sensa Dock Voice Bridge] Heard transcript: "${cleanText}" (Raw: "${rawTranscript}")`)
 
           const paddedSpeech = ` ${cleanText} `
           const rawPaddedSpeech = ` ${rawCleanText} `
@@ -1357,7 +1359,7 @@ export default function VisualDock({
             // Only apply micro-cooldown if repeating the EXACT same command within 250ms.
             if (commandName === lastCommandName && timeSinceLastCommand < 250) {
               const ts = new Date().toISOString().substring(11, 23)
-              console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Ignored duplicate command: "${commandName}" (within 250ms cooldown)`)
+              // console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Ignored duplicate command: "${commandName}" (within 250ms cooldown)`)
               return
             }
             if (commandTimeout) {
@@ -1382,7 +1384,7 @@ export default function VisualDock({
               }
             }
             const ts = new Date().toISOString().substring(11, 23)
-            console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Executing command: "${commandName}"`)
+            // console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> Executing command: "${commandName}"`)
             action()
           }
 
@@ -1559,7 +1561,7 @@ export default function VisualDock({
 
           if (!matchedAnyCommand) {
             const ts = new Date().toISOString().substring(11, 23)
-            console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> No command matched for transcript: "${cleanText}" (isVoiceActive: ${callbacksRef.current.isVoiceCommandActive})`)
+            // console.log(`[${ts}] [Sensa Dock Voice Bridge] Score results -> No command matched for transcript: "${cleanText}" (isVoiceActive: ${callbacksRef.current.isVoiceCommandActive})`)
           }
 
           return false
