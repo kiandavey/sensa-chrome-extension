@@ -1,15 +1,21 @@
 export const isBraveBrowser = async (): Promise<boolean> => {
   try {
-    // 1. Direct check (works in main world, popup, and background SW if not hidden by shields)
-    if (typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
-      const isBrave = await (navigator as any).brave.isBrave();
-      if (isBrave) return true;
+    // 1. Direct check for Brave (works in main world, popup, and background SW if not hidden by shields)
+    if (typeof navigator !== 'undefined') {
+      if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
+        const isBrave = await (navigator as any).brave.isBrave();
+        if (isBrave) return true;
+      }
+      // Check for Opera via User-Agent
+      if (navigator.userAgent && (navigator.userAgent.includes("OPR/") || navigator.userAgent.includes("Opera/"))) {
+        return true;
+      }
     }
     
     // 2. Synchronous fallback using userAgentData Client Hints
     if (typeof navigator !== 'undefined' && (navigator as any).userAgentData && (navigator as any).userAgentData.brands) {
       const brands = (navigator as any).userAgentData.brands;
-      if (brands.some((b: any) => b.brand === 'Brave')) {
+      if (brands.some((b: any) => b.brand === 'Brave' || b.brand === 'Opera')) {
         return true;
       }
     }

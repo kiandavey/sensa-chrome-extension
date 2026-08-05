@@ -411,8 +411,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         target: { tabId: sender.tab.id },
         world: "MAIN",
         func: async () => {
-          if (typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
-            return await (navigator as any).brave.isBrave();
+          if (typeof navigator !== 'undefined') {
+            if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
+              if (await (navigator as any).brave.isBrave()) return true;
+            }
+            if (navigator.userAgent && (navigator.userAgent.includes("OPR/") || navigator.userAgent.includes("Opera/"))) {
+              return true;
+            }
           }
           return false;
         }
@@ -439,9 +444,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(async () => {
   // Detect Brave and save to storage for content scripts
   try {
-    const isBrave = typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function' 
-      ? await (navigator as any).brave.isBrave() 
-      : false;
+    let isBrave = false;
+    if (typeof navigator !== 'undefined') {
+      if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
+        isBrave = await (navigator as any).brave.isBrave();
+      } else if (navigator.userAgent && (navigator.userAgent.includes("OPR/") || navigator.userAgent.includes("Opera/"))) {
+        isBrave = true;
+      }
+    }
     await chrome.storage.local.set({ is_brave: isBrave });
   } catch (e) {
     console.error("Brave detection failed in background", e);
@@ -469,9 +479,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onStartup.addListener(async () => {
   try {
-    const isBrave = typeof navigator !== 'undefined' && (navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function' 
-      ? await (navigator as any).brave.isBrave() 
-      : false;
+    let isBrave = false;
+    if (typeof navigator !== 'undefined') {
+      if ((navigator as any).brave && typeof (navigator as any).brave.isBrave === 'function') {
+        isBrave = await (navigator as any).brave.isBrave();
+      } else if (navigator.userAgent && (navigator.userAgent.includes("OPR/") || navigator.userAgent.includes("Opera/"))) {
+        isBrave = true;
+      }
+    }
     await chrome.storage.local.set({ is_brave: isBrave });
   } catch (e) {
     console.error("Brave detection failed in background on startup", e);

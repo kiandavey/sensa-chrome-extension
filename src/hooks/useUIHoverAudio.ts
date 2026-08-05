@@ -149,7 +149,7 @@ export function useUIHoverAudio() {
 				return true
 			}
 
-			// 3. Fallback for Brave (or environments without Google voices). Accept any local English voice.
+			// 3. Fallback for Brave/Opera (or environments without Google voices). Accept any local English voice.
 			if (isBraveRef.current) {
 				const fallbackBrave = voices.find(v => v.lang.startsWith("en")) || voices[0]
 				if (fallbackBrave) {
