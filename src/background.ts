@@ -441,7 +441,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 })
 
 // Auto-inject content script into all open HTTP/HTTPS tabs on extension reload or update
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+  // Clear voice settings on development reloads to simulate fresh installs for testing
+  chrome.management.getSelf((info) => {
+    if (info.installType === "development" || details.reason === "install") {
+      chrome.storage.local.remove([
+        "sensa_visual_voice_uri",
+        "sensa_visual_voice_name"
+      ]).catch(() => {});
+    }
+  });
+
   // Detect Brave and save to storage for content scripts
   try {
     let isBrave = false;
@@ -459,18 +469,29 @@ chrome.runtime.onInstalled.addListener(async () => {
 
   chrome.tabs.query({ url: ["http://*/*", "https://*/*"] }, async (tabs) => {
     const manifest = chrome.runtime.getManifest()
-    const jsFiles = manifest?.content_scripts?.[0]?.js || []
-    if (jsFiles.length === 0) return
+    const contentScripts = manifest?.content_scripts || []
+    
+    if (contentScripts.length === 0) return
 
     for (const tab of tabs) {
       if (typeof tab.id === "number") {
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: jsFiles
-          })
-        } catch {
-          // Ignore tabs with strict CSP or restricted permissions
+        for (const script of contentScripts) {
+          try {
+            if (script.js && script.js.length > 0) {
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id, allFrames: script.all_frames || false },
+                files: script.js
+              })
+            }
+            if (script.css && script.css.length > 0) {
+              await chrome.scripting.insertCSS({
+                target: { tabId: tab.id, allFrames: script.all_frames || false },
+                files: script.css
+              })
+            }
+          } catch {
+            // Ignore restricted tabs
+          }
         }
       }
     }
